@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GenAI for Food (FDA Humans Foods Demo)</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body class="light">
+    <!-- Header -->
+    <header class="app-header">
+        <button id="menuButton">
+            <span class="material-icons">menu</span>
+        </button>
+        <h1 class="app-title">GenAI for Food</h1>
+        
+        <!-- Menu Panel -->
+        <div id="menuPanel">
+            <nav>
+                <a href="#" class="menu-item" data-view="precheck">Site Precheck</a>
+                <a href="#" class="menu-item" data-view="inspection">Inspection Tool</a>
+                <a href="#" class="menu-item" data-view="nutrition">Nutrition Assistant</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container">
+        <!-- Site Precheck View -->
+        <div id="precheckView" style="display: none;">
+            <div style="margin-bottom: 16px;">
+                <select id="coordinates" 
+                        data-coordinates='[
+                            {"name": "American Foods Group, LLC - Long Prairie Packing Co", "address": "10 Riverside Dr, Long Prairie, MN 56347", "lat": 45.9735, "lon": -94.8676},
+                            {"name": "Oscar Mayers Packing", "address": "2099 Roth St, Madison, WI 53704", "lat": 43.1166, "lon": -89.3471},
+                            {"name": "Create-A-Pack Foods Inc", "address": "W1344 Industrial Dr, Ixonia, WI 53036", "lat": 43.1397, "lon": -88.5891},
+                            {"name": "HyLife Foods", "address": "2850 MN-60, Windom, MN 56101", "lat": 43.8644, "lon": -95.1172}
+                        ]'>
+                    <option value="" disabled selected>Select inspection location</option>
+                    <option value="10 Riverside Dr, Long Prairie, MN 56347">American Foods Group, LLC - Long Prairie Packing Co</option>
+                    <option value="2099 Roth St, Madison, WI 53704">Oscar Mayers Packing</option>
+                    <option value="W1344 Industrial Dr, Ixonia, WI 53036">Create-A-Pack Foods Inc</option>
+                    <option value="2850 MN-60, Windom, MN 56101">HyLife Foods</option>
+                </select>
+            </div>
+            <div id="map" style="height: 400px; margin-bottom: 16px;"></div>
+            <div id="precheckOutput" class="card">
+                <h3>Analysis</h3>
+                <p id="precheckResult">Enter coordinates to analyze the location.</p>
+            </div>
+        </div>
+
+        <!-- Inspection Tool View -->
+        <div id="inspectionView" style="display: none;">
+            <div class="camera-container" style="position: relative; margin-bottom: 24px;">
+                <!-- Camera and preview container -->
+                <div style="height: 300px;">
+                    <video id="camera" autoplay playsinline style="display: none;"></video>
+                    <div id="cameraPlaceholder" class="camera-placeholder">
+                        <span class="material-icons">photo_camera</span>
+                        <p>Click "Camera" to start or upload an image</p>
+                    </div>
+                </div>
+                <!-- Controls container -->
+                <div class="controls-container" style="position: absolute; bottom: 0; left: 0; right: 0;">
+                    <div style="display: flex; justify-content: center; gap: 8px;">
+                        <button id="cameraToggle" class="control-button">
+                            <span class="material-icons">videocam</span>
+                            <span>Camera</span>
+                        </button>
+                        <button id="captureButton" class="control-button">
+                            <span class="material-icons">photo_camera</span>
+                            <span>Capture</span>
+                        </button>
+                        <button id="retakeButton" class="control-button" style="display: none;">
+                            <span class="material-icons">refresh</span>
+                            <span>Retake</span>
+                        </button>
+                        <label class="control-button upload-button" style="cursor: pointer;">
+                            <span class="material-icons">upload</span>
+                            <span>Upload</span>
+                            <input type="file" id="fileInput" accept="image/*" style="display: none;">
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 16px;">
+                <div id="questionBox" class="card" style="margin-bottom: 16px;">
+                    <p style="font-size: 1.1rem;">What is the background of this inspection?</p>
+                </div>
+                <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+                    <button id="micButton">
+                        <span class="material-icons">mic</span>
+                    </button>
+                    <input type="text" id="inspectionInput" 
+                           style="flex: 1;" 
+                           placeholder="Type or speak your response">
+                </div>
+                <button id="processButton">
+                    Process
+                </button>
+            </div>
+
+            <div id="citationResults">
+                <!-- Citations will be dynamically added here -->
+            </div>
+        </div>
+
+        <!-- Nutrition Assistant View -->
+        <div id="nutritionView" style="display: none;">
+            <div class="nutrition-app-container">
+                <!-- Camera View -->
+                <div class="nutrition-camera-container">
+                    <video id="nutritionVideo" autoplay muted playsinline></video>
+                    <div class="nutrition-camera-overlay"></div>
+                    <button class="nutrition-capture-btn" onclick="window.captureNutritionPhoto()"></button>
+                </div>
+
+                <!-- Module Buttons -->
+                <div class="nutrition-modules-panel">
+                    <button class="nutrition-module-btn" onclick="window.openNutritionModule('history')">📚 Food History</button>
+                    <button class="nutrition-module-btn" onclick="window.openNutritionModule('recommendations')">⭐ Recommendations</button>
+                    <button class="nutrition-module-btn" onclick="window.openNutritionModule('analyze')">🔍 Analyze a Food Item</button>
+                    <button class="nutrition-module-btn" onclick="window.openNutritionModule('chat')">💬 Food Claim Verification Chat</button>
+                </div>
+
+                <!-- Content Panel -->
+                <div class="nutrition-content-panel" id="nutritionContentPanel">
+                    <div class="nutrition-panel-header">
+                        <button class="nutrition-close-btn" onclick="window.closeNutritionPanel()">&times;</button>
+                        <div class="nutrition-panel-title" id="nutritionPanelTitle">Module Title</div>
+                        <div class="nutrition-panel-subtitle" id="nutritionPanelSubtitle">Module description</div>
+                    </div>
+                    <div class="nutrition-panel-content" id="nutritionPanelContent">
+                        <!-- Dynamic content goes here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Firebase Scripts -->
+    <script type="module">
+        // Import Firebase modules
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js";
+        import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js";
+
+        // Initialize Firebase with config from backend
+        window.initializeFirebase = async function() {
+            try {
+                const response = await fetch('https://us-central1-gemini-med-lit-review.cloudfunctions.net/getFirebaseConfig');
+                if (!response.ok) throw new Error('Failed to fetch Firebase config');
+                const { data: config } = await response.json();
+                
+                // Initialize Firebase with fetched config
+                const app = initializeApp(config);
+                const analytics = getAnalytics(app);
+                const functions = getFunctions(app, 'us-central1');
+                
+                // Make functions available globally
+                window.getMapData = httpsCallable(functions, 'analyzeSitePrecheck');
+                
+                // Signal that Firebase is ready
+                window.firebaseInitialized = true;
+                
+                // Dispatch event for app.js
+                window.dispatchEvent(new Event('firebaseReady'));
+            } catch (error) {
+                console.error('Failed to initialize Firebase:', error);
+                throw error;
+            }
+        };
+
+        // Initialize Firebase when page loads
+        window.initializeFirebase().catch(console.error);
+    </script>
+    
+    <!-- Application Scripts -->
+    <script src="/app.js" type="module"></script>
+</body>
+</html>

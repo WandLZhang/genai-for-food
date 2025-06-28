@@ -1,0 +1,31 @@
+{
+  "functions": [
+    {
+      "source": "javascript-function",
+      "codebase": "site-check-js",
+      "runtime": "nodejs18",
+      "ignore": [
+        ".git",
+        ".gitignore",
+        "firebase-debug.log"
+      ]
+    },
+    {
+      "source": "python-function",
+      "codebase": "site-check-py",
+      "runtime": "python311",
+      "region": "us-central1",
+      "memory": "2GB",
+      "timeout": "540s",
+      "ignore": [
+        ".git",
+        ".gitignore",
+        "firebase-debug.log",
+        "__pycache__",
+        "*.pyc",
+        ".env",
+        ".env.*"
+      ]
+    }
+  ]
+}

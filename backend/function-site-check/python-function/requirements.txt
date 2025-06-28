@@ -1,0 +1,4 @@
+functions-framework==3.*
+Pillow==10.*
+google-cloud-aiplatform==1.*
+google-generativeai==0.*

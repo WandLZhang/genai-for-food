@@ -1,0 +1,480 @@
+/* Custom styles for better aesthetics and functionality */
+body {
+    font-family: 'Inter', sans-serif;
+}
+
+/* This ensures the scrollable content area expands to fill the box */
+.box {
+    display: flex;
+    flex-direction: column;
+}
+
+.scrollable-content {
+    flex-grow: 1; /* Allows this div to grow and fill available space */
+    overflow-y: auto; /* Adds scrollbar only when content overflows */
+    height: 300px; /* Defines a fixed height to enable scrolling */
+}
+
+/* Custom scrollbar for a cleaner look */
+.scrollable-content::-webkit-scrollbar,
+#modalSettingsList::-webkit-scrollbar {
+    width: 8px;
+}
+.scrollable-content::-webkit-scrollbar-track,
+#modalSettingsList::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+.scrollable-content::-webkit-scrollbar-thumb,
+#modalSettingsList::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 10px;
+}
+.scrollable-content::-webkit-scrollbar-thumb:hover,
+#modalSettingsList::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* Custom styles for chat messages */
+.chat-messages::-webkit-scrollbar {
+    width: 6px;
+}
+.chat-messages::-webkit-scrollbar-track {
+    background: #e5e7eb;
+    border-radius: 10px;
+}
+.chat-messages::-webkit-scrollbar-thumb {
+    background: #9ca3af;
+    border-radius: 10px;
+}
+.chat-messages::-webkit-scrollbar-thumb:hover {
+    background: #6b7280;
+}
+
+/* Modal transition */
+.modal {
+    transition: opacity 0.25s ease;
+}
+
+.markdown-content h1, .markdown-content h2, .markdown-content h3, .markdown-content h4, .markdown-content h5, .markdown-content h6 {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    margin-top: 1rem;
+}
+.markdown-content h1 { font-size: 1.875rem; } /* text-3xl */
+.markdown-content h2 { font-size: 1.5rem; }    /* text-2xl */
+.markdown-content h3 { font-size: 1.25rem; }   /* text-xl */
+.markdown-content p {
+    margin-bottom: 1rem;
+}
+.markdown-content ul {
+    list-style-type: disc;
+    padding-left: 1.5rem;
+    margin-bottom: 1rem;
+}
+.markdown-content ol {
+    list-style-type: decimal;
+    padding-left: 1.5rem;
+    margin-bottom: 1rem;
+}
+.markdown-content li {
+    margin-bottom: 0.25rem;
+}
+.markdown-content a {
+    color: #2563EB; /* blue-600 */
+    text-decoration: underline;
+}
+.markdown-content blockquote {
+    border-left: 4px solid #D1D5DB; /* gray-300 */
+    padding-left: 1rem;
+    margin-left: 0;
+    font-style: italic;
+    color: #4B5563; /* gray-600 */
+}
+.markdown-content code {
+    background-color: #F3F4F6; /* gray-100 */
+    padding: 0.125rem 0.25rem;
+    border-radius: 0.25rem;
+    font-family: monospace;
+}
+.markdown-content pre {
+    background-color: #F3F4F6; /* gray-100 */
+    padding: 1rem;
+    border-radius: 0.5rem;
+    overflow-x: auto;
+}
+
+/* Ensure the upload box maintains proper height */
+.box:nth-child(3) {
+    min-height: 300px;
+}
+
+/* Style for the analysis results */
+#analysisResults {
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+#analysisResults h4 {
+    font-size: 1rem;
+}
+
+#analysisResults h5 {
+    font-size: 0.875rem;
+}
+
+/* Ensure images don't overflow their container */
+#uploadedImage {
+    max-height: 100%;
+    width: auto;
+    height: auto;
+}
+
+/* Ensure the upload/analysis box maintains consistent height */
+.box:nth-child(3) {
+    height: 400px; /* Fixed height for the box */
+    max-height: 400px;
+    overflow: hidden;
+}
+
+/* Ensure the analysis results container is scrollable */
+#analysisResults {
+    font-size: 0.875rem;
+    line-height: 1.5;
+    max-height: 100%;
+    overflow-y: auto;
+}
+
+/* Custom scrollbar for analysis results */
+#analysisResults::-webkit-scrollbar {
+    width: 6px;
+}
+
+#analysisResults::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+#analysisResults::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 10px;
+}
+
+#analysisResults::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* Ensure proper layout for the split view */
+.box:nth-child(3) .flex {
+    height: 100%;
+}
+
+/* Rating boxes styling */
+.rating-box {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    position: relative;
+    overflow: hidden;
+}
+
+.rating-box::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.rating-box:hover::before {
+    opacity: 1;
+}
+
+.rating-icon {
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+.rating-label {
+    letter-spacing: 0.05em;
+}
+
+.rating-value {
+    animation: slideUp 0.6s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsive adjustments for rating boxes */
+@media (max-width: 640px) {
+    .rating-box {
+        padding: 0.5rem;
+    }
+    
+    .rating-icon svg {
+        width: 1.5rem;
+        height: 1.5rem;
+    }
+    
+    .rating-label {
+        font-size: 0.625rem;
+    }
+    
+    .rating-value {
+        font-size: 0.875rem;
+    }
+}
+
+/* Analysis results container improvements */
+#analysisResults h4 {
+    position: sticky;
+    top: 0;
+    background-color: #f9fafb;
+    z-index: 10;
+    padding-bottom: 0.5rem;
+}
+
+/* Ensure smooth transitions when switching between upload and analysis views */
+.box:nth-child(3) > * {
+    transition: opacity 0.3s ease-in-out;
+}
+
+/* Citation marker styling */
+.citation-marker {
+    color: #2563EB;
+    font-weight: 600;
+    cursor: help;
+    position: relative;
+    display: inline-block;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    font-size: 0.875em;
+    padding: 0 2px;
+}
+
+.citation-marker:hover {
+    color: #1D4ED8;
+    background-color: #EFF6FF;
+    border-radius: 3px;
+}
+
+/* Citation tooltip styling */
+.citation-tooltip {
+    position: fixed;
+    z-index: 1000;
+    display: none;
+    max-width: 400px;
+    background: white;
+    border: 1px solid #E5E7EB;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
+    animation: tooltipFadeIn 0.2s ease-out;
+    --arrow-offset: 0px;
+}
+
+/* Arrow for tooltip above citation */
+.citation-tooltip.tooltip-above::before {
+    content: '';
+    position: absolute;
+    bottom: -6px;
+    left: 50%;
+    transform: translateX(calc(-50% + var(--arrow-offset)));
+    width: 12px;
+    height: 12px;
+    background: white;
+    border-right: 1px solid #E5E7EB;
+    border-bottom: 1px solid #E5E7EB;
+    transform: translateX(calc(-50% + var(--arrow-offset))) rotate(45deg);
+}
+
+/* Arrow for tooltip below citation */
+.citation-tooltip.tooltip-below::before {
+    content: '';
+    position: absolute;
+    top: -6px;
+    left: 50%;
+    transform: translateX(calc(-50% + var(--arrow-offset)));
+    width: 12px;
+    height: 12px;
+    background: white;
+    border-left: 1px solid #E5E7EB;
+    border-top: 1px solid #E5E7EB;
+    transform: translateX(calc(-50% + var(--arrow-offset))) rotate(45deg);
+}
+
+.citation-tooltip-content {
+    padding: 12px 16px;
+}
+
+.citation-tooltip-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #F3F4F6;
+}
+
+.citation-tooltip-source {
+    font-weight: 600;
+    color: #1F2937;
+    font-size: 0.875rem;
+}
+
+.citation-tooltip-page {
+    font-size: 0.75rem;
+    color: #6B7280;
+    background-color: #F3F4F6;
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+.citation-tooltip-context {
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: #4B5563;
+    font-style: italic;
+}
+
+.citation-tooltip-substance {
+    margin-top: 8px;
+    font-size: 0.75rem;
+    color: #6B7280;
+    padding: 4px 8px;
+    background-color: #FEF3C7;
+    border-radius: 4px;
+    display: inline-block;
+}
+
+.citation-tooltip-cas {
+    margin-top: 6px;
+    font-size: 0.75rem;
+    color: #4B5563;
+    font-family: monospace;
+}
+
+.citation-tooltip-year {
+    margin-top: 4px;
+    font-size: 0.75rem;
+    color: #6B7280;
+    font-style: italic;
+}
+
+.citation-tooltip-link {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #F3F4F6;
+}
+
+@keyframes tooltipFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsive adjustments for citations */
+@media (max-width: 640px) {
+    .citation-tooltip {
+        max-width: 300px;
+        font-size: 0.875rem;
+    }
+    
+    .citation-tooltip-content {
+        padding: 10px 12px;
+    }
+}
+
+/* Sidebar transition and collapsed state */
+#sidebar {
+    transition: all 0.3s ease-in-out;
+    position: relative;
+}
+
+#sidebar.collapsed {
+    width: 0 !important;
+    min-width: 0 !important;
+    overflow: hidden;
+    margin: 0;
+    padding: 0;
+}
+
+/* Content area expansion when sidebar is collapsed */
+#contentArea {
+    transition: all 0.3s ease-in-out;
+}
+
+#contentArea.expanded {
+    margin-left: 0 !important;
+    width: 100%;
+}
+
+/* Mobile-specific styles */
+@media (max-width: 768px) {
+    #sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        height: 100vh;
+        z-index: 40;
+        background: white;
+    }
+    
+    #sidebar.collapsed {
+        transform: translateX(-100%);
+    }
+    
+    /* Overlay for mobile when sidebar is open */
+    .sidebar-overlay {
+        position: fixed;
+        inset: 0;
+        bg-black bg-opacity-50;
+        z-index: 30;
+        display: none;
+    }
+    
+    .sidebar-overlay.active {
+        display: block;
+    }
+}
+
+/* Ensure main layout takes full width */
+main {
+    position: relative;
+    width: 100%;
+}
+
+/* Tab button adjustments for collapsed state */
+#sidebar.collapsed .tab-button {
+    padding: 0.75rem;
+    justify-content: center;
+}
+
+#sidebar.collapsed .tab-button svg {
+    margin: 0;
+}
