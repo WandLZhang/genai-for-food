@@ -14,16 +14,25 @@ function getLocationDetails(address) {
 async function loadSatelliteImage(address) {
     console.log('Fetching satellite image...');
     try {
-        const imageResult = await window.getMapData({ address });
-        
-        if (!imageResult.data) {
-            console.error('No data received from getMapData');
-            throw new Error('Failed to get satellite image data');
+        const response = await fetch('https://us-central1-fda-genai-for-food.cloudfunctions.net/function-get-map', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ address })
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Failed to fetch map image:', errorText);
+            throw new Error('Failed to get satellite image');
         }
         
-        const { mapUrl, mapImage } = imageResult.data;
+        const imageResult = await response.json();
+        const { mapUrl, mapImage } = imageResult;
+        
         if (!mapImage) {
-            console.error('No image data received from getMapData');
+            console.error('No image data received from server');
             throw new Error('Failed to get satellite image');
         }
         
@@ -125,8 +134,10 @@ export async function analyzeLocation(address, audioManager) {
     // Set this as the current active controller
     currentAnalysisController = localAbortController;
 
-    // Stop any playing audio
-    audioManager.stopAudio();
+    // Stop any playing audio if audioManager is provided
+    if (audioManager) {
+        audioManager.stopAudio();
+    }
 
     try {
         // First load the satellite image
@@ -249,9 +260,11 @@ export async function analyzeLocation(address, audioManager) {
             ${finalResults}
         `;
 
-        // Automatically play audio using streaming
-        const speechText = `Activity Level: ${activityLabel}. ${activityDescription} ${observations.join('. ')}`;
-        audioManager.playStreamedAudio(speechText);
+        // Automatically play audio using streaming if audioManager is provided
+        if (audioManager) {
+            const speechText = `Activity Level: ${activityLabel}. ${activityDescription} ${observations.join('. ')}`;
+            audioManager.playStreamedAudio(speechText);
+        }
     } catch (error) {
         if (error.name === 'AbortError') {
             console.log('Analysis was cancelled');

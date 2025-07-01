@@ -1,0 +1,19 @@
+{
+  "name": "function-get-map",
+  "version": "1.0.0",
+  "description": "Cloud Function for retrieving satellite images",
+  "type": "module",
+  "main": "index.js",
+  "engines": {
+    "node": "20"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {}
+}

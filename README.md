@@ -32,8 +32,13 @@ gcloud services enable \
   discoveryengine.googleapis.com \
   aiplatform.googleapis.com \
   firebase.googleapis.com \
-  iam.googleapis.com
+  iam.googleapis.com \
+  static-maps-backend.googleapis.com
 ```
+
+### 2.3. Create Google Maps API Key
+
+Go to Google Cloud API marketplace and enable Maps Javascript SDK and Maps Static API. Then create an API key.
 
 ## 3. Firebase Setup
 
@@ -223,7 +228,7 @@ cd ../..
 
 **`function-site-check`**
 ```bash
-cd backend/function-site-check/python-function
+cd backend/function-site-check
 gcloud functions deploy function-site-check \
   --gen2 \
   --runtime=python311 \
@@ -231,9 +236,29 @@ gcloud functions deploy function-site-check \
   --source=. \
   --entry-point=site_check \
   --trigger-http \
+  --allow-unauthenticated
+cd ../..
+```
+
+**`function-get-map`** (JavaScript function for map retrieval)
+```bash
+cd backend/function-get-map
+gcloud functions deploy function-get-map \
+  --gen2 \
+  --runtime=nodejs20 \
+  --region=us-central1 \
+  --source=. \
+  --entry-point=default \
+  --trigger-http \
   --allow-unauthenticated \
-  --set-env-vars MAPS_API_KEY=your_google_maps_api_key_here,APP_FIREBASE_KEY=your_firebase_api_key_here
-cd ../../..
+  --timeout=540s \
+  --memory=256Mi \
+  --cpu=1 \
+  --min-instances=1 \
+  --max-instances=100 \
+  --concurrency=80 \
+  --set-env-vars MAPS_API_KEY=your_google_maps_api_key_here
+cd ../..
 ```
 
 ## 5. Update Frontend with Backend Endpoints
@@ -265,6 +290,7 @@ sed -i '' "s|https://us-central1-gemini-med-lit-review\.cloudfunctions\.net/food
 # Update sitePrecheck.js
 echo "Updating sitePrecheck.js..."
 sed -i '' "s|https://us-central1-gemini-med-lit-review\.cloudfunctions\.net/site-check-py|https://us-central1-${PROJECT_ID}.cloudfunctions.net/function-site-check|g" frontend/public/modules/sitePrecheck.js
+sed -i '' "s|https://us-central1-gemini-med-lit-review\.cloudfunctions\.net/function-get-map|https://us-central1-${PROJECT_ID}.cloudfunctions.net/function-get-map|g" frontend/public/modules/sitePrecheck.js
 
 echo "All endpoints updated!"
 ```
