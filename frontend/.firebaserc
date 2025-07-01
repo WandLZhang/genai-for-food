@@ -1,5 +1,15 @@
 {
   "projects": {
-    "default": "gemini-med-lit-review"
-  }
+    "default": "fda-genai-for-food"
+  },
+  "targets": {
+    "genai-for-food": {
+      "hosting": {
+        "site": [
+          "genai-for-food"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }

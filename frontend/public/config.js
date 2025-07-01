@@ -6,13 +6,12 @@ const getEnvVar = (name) => {
 
 export const config = {
     firebase: {
-        apiKey: getEnvVar('firebase-api-key'),
-        authDomain: "gemini-med-lit-review.firebaseapp.com",
-        projectId: "gemini-med-lit-review",
-        storageBucket: "gemini-med-lit-review.firebasestorage.app",
-        messagingSenderId: "934163632848",
-        appId: "1:934163632848:web:621139404479e7562e44d5",
-        measurementId: "G-Y4Y3EGC8KZ"
+        apiKey: "AIzaSyA25BAdiIYLGdRtjlFAIum92J5_aq5mqgg",
+        authDomain: "fda-genai-for-food.firebaseapp.com",
+        projectId: "fda-genai-for-food",
+        storageBucket: "fda-genai-for-food.firebasestorage.app",
+        messagingSenderId: "493357598781",
+        appId: "1:493357598781:web:69b065d2d67645625a8254"
     },
     googleMaps: {
         apiKey: getEnvVar('google-maps-api-key')

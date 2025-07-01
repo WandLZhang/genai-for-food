@@ -1,6 +1,6 @@
 {
   "hosting": {
-    "site": "gps-rit-fda-inspection",
+    "site": "genai-for-food",
     "public": "public",
     "ignore": [
       "firebase.json",

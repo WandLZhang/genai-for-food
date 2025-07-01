@@ -52,7 +52,7 @@ export class AudioManager {
         this.currentAudioController = new AbortController();
 
         try {
-            const response = await fetch('https://us-central1-gemini-med-lit-review.cloudfunctions.net/fda-generate-audio', {
+            const response = await fetch('https://us-central1-fda-genai-for-food.cloudfunctions.net/function-audio-output', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -95,7 +95,7 @@ export class AudioManager {
         try {
             console.log('AudioManager: Starting new audio stream');
             
-            const response = await fetch('https://us-central1-gemini-med-lit-review.cloudfunctions.net/fda-generate-audio', {
+            const response = await fetch('https://us-central1-fda-genai-for-food.cloudfunctions.net/function-audio-output', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
