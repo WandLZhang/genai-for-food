@@ -58,7 +58,7 @@ async function loadSatelliteImage(address) {
 async function analyzeSite(mapImage) {
     console.log('Starting vehicle detection analysis...');
     try {
-        const analysisResult = await fetch('https://us-central1-gemini-med-lit-review.cloudfunctions.net/site-check-py', {
+        const analysisResult = await fetch('https://us-central1-fda-genai-for-food.cloudfunctions.net/site-check-py', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -176,7 +176,7 @@ export async function analyzeLocation(address, audioManager) {
 
         // Start streaming status updates
         const streamingOutput = document.getElementById('streamingOutput');
-        const analysisStream = new EventSource('https://us-central1-gemini-med-lit-review.cloudfunctions.net/site-check-py/stream');
+        const analysisStream = new EventSource('https://us-central1-fda-genai-for-food.cloudfunctions.net/site-check-py/stream');
         
         // Wait for streaming to complete
         await new Promise((resolve, reject) => {

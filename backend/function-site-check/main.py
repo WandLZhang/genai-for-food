@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 # Initialize Vertex AI clients
 genai_client = genai.Client(
     vertexai=True,
-    project="gemini-med-lit-review",
+    project=os.environ.get('GCP_PROJECT', 'gemini-med-lit-review'),
     location="global"
 )
 
@@ -148,7 +148,7 @@ def analyze_image_stream(img_base64: str) -> tuple[dict, str]:
 
         response_text = ""
         for chunk in genai_client.models.generate_content_stream(
-            model="gemini-2.5-pro-preview-06-05",
+            model="gemini-2.5-pro",
             contents=contents,
             config=generate_content_config
         ):

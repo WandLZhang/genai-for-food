@@ -141,9 +141,14 @@ PROJECT_NUMBER=$(gcloud projects describe YOUR_PROJECT_ID --format="value(projec
 gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
   --member=serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com \
   --role=roles/cloudbuild.builds.builder
+
+# Grant Vertex AI User role for functions that use Vertex AI
+gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
+  --member=serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com \
+  --role=roles/aiplatform.user
 ```
 
-This step is required to allow the service account to build and deploy Cloud Functions. Without this permission, deployments will fail with a build service account error.
+This step is required to allow the service account to build and deploy Cloud Functions, and to access Vertex AI services. Without these permissions, deployments will fail with a build service account error or Vertex AI access error.
 
 ### 4.2. Deploying Cloud Functions
 
@@ -220,23 +225,30 @@ gcloud functions deploy function-image-inspection \
   --runtime=python311 \
   --region=us-central1 \
   --source=. \
-  --entry-point=inspect_image \
+  --entry-point=process_inspection \
   --trigger-http \
-  --allow-unauthenticated
+  --allow-unauthenticated \
+  --set-env-vars GCP_PROJECT=YOUR_PROJECT_ID
 cd ../..
 ```
 
 **`function-site-check`**
 ```bash
 cd backend/function-site-check
-gcloud functions deploy function-site-check \
+gcloud functions deploy site-check-py \
   --gen2 \
-  --runtime=python311 \
+  --runtime=python312 \
   --region=us-central1 \
   --source=. \
-  --entry-point=site_check \
+  --entry-point=analyze_site_precheck \
   --trigger-http \
-  --allow-unauthenticated
+  --allow-unauthenticated \
+  --memory=2Gi \
+  --cpu=2 \
+  --timeout=3600s \
+  --max-instances=100 \
+  --concurrency=1 \
+  --set-env-vars GCP_PROJECT=YOUR_PROJECT_ID
 cd ../..
 ```
 

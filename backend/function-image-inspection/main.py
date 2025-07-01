@@ -49,7 +49,7 @@ current_processing_stage = "idle"
 processing_lock = threading.Lock()
 
 # Discovery Engine setup
-PROJECT_ID = "gemini-med-lit-review"
+PROJECT_ID = os.environ.get('GCP_PROJECT', 'gemini-med-lit-review')
 LOCATION = "global"
 DATA_STORE_ID = "fda-title21_6"
 
@@ -60,7 +60,7 @@ doc_client = discoveryengine.DocumentServiceClient(client_options=client_options
 # Initialize Gemini 2.5 client
 gemini_2_5_client = genai.Client(
     vertexai=True,
-    project="gemini-med-lit-review",
+    project=os.environ.get('GCP_PROJECT', 'gemini-med-lit-review'),
     location="global"
 )
 
