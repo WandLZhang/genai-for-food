@@ -397,7 +397,7 @@ gcloud functions deploy function-food-analysis \
   --min-instances=1 \
   --max-instances=100 \
   --concurrency=1 \
-  --set-env-vars GEMINI_API_KEY=YOUR_GEMINI_API_KEY,RAG_BUCKET_NAME=YOUR_RAG_BUCKET_NAME
+  --set-env-vars GEMINI_API_KEY=YOUR_GEMINI_API_KEY
 cd ../..
 ```
 

@@ -1,9 +1,9 @@
 import os
 import json
+import asyncio
 import functions_framework
 from google import genai
 from google.genai import types
-from google.cloud import storage
 from flask import jsonify
 import logging
 import base64
@@ -12,19 +12,56 @@ import base64
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Initialize storage client
-storage_client = storage.Client()
+# Global variables for document caching
+_documents_cache = None
+_client = None
 
-def get_document_content(bucket_name, file_path):
-    """Download and read content from Cloud Storage."""
+def initialize_client():
+    """Initialize Vertex AI client once."""
+    global _client
+    if _client is None:
+        project_id = os.environ.get('PROJECT_ID', 'fda-genai-for-food')
+        location = os.environ.get('LOCATION', 'global')
+        
+        _client = genai.Client(
+            vertexai=True,
+            project=project_id,
+            location=location,
+        )
+        logger.info(f"Initialized Vertex AI client for project {project_id} in {location}")
+    
+    return _client
+
+def load_documents():
+    """Load all documents once and cache them."""
+    global _documents_cache
+    
+    if _documents_cache is not None:
+        return _documents_cache
+    
     try:
-        bucket = storage_client.bucket(bucket_name)
-        blob = bucket.blob(file_path)
-        content = blob.download_as_bytes()
-        return content
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        docs_dir = os.path.join(current_dir, 'documents')
+        
+        _documents_cache = {
+            'health_pdf': read_file_bytes(os.path.join(docs_dir, '2024-12-16-healthyclaim-factsheet-scb-0900.pdf')),
+            'health_txt': read_file_bytes(os.path.join(docs_dir, 'Dietary_Guidelines_for_Americans-2020-2025.txt')),
+            'scogs_definitions': read_file_bytes(os.path.join(docs_dir, 'SCOGS-definitions.csv')),
+            'scogs_data': read_file_bytes(os.path.join(docs_dir, 'SCOGS.csv')),
+            'fda_news': read_file_bytes(os.path.join(docs_dir, 'FDA News Release.txt'))
+        }
+        
+        logger.info("Documents loaded and cached successfully")
+        return _documents_cache
+        
     except Exception as e:
-        logger.error(f"Error reading {file_path} from bucket {bucket_name}: {e}")
+        logger.error(f"Error loading documents: {e}")
         return None
+
+def read_file_bytes(file_path):
+    """Read file and return bytes."""
+    with open(file_path, 'rb') as f:
+        return f.read()
 
 def clean_json_response(response_text):
     """Clean the response text to be valid JSON."""
@@ -45,22 +82,25 @@ def get_mime_type(filename):
     }
     return mime_types.get(file_extension, 'application/octet-stream')
 
-def health_rating_from_image(image_data, mime_type, user_settings, user_preferences, bucket_name):
-    """Determine the Health Rating from an image."""
+def get_generate_config():
+    """Get common generation config with safety settings."""
+    return types.GenerateContentConfig(
+        temperature=0,
+        top_p=1,
+        seed=0,
+        max_output_tokens=65535,
+        safety_settings=[
+            types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="OFF"),
+            types.SafetySetting(category="HARM_CATEGORY_DANGEROUS_CONTENT", threshold="OFF"),
+            types.SafetySetting(category="HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold="OFF"),
+            types.SafetySetting(category="HARM_CATEGORY_HARASSMENT", threshold="OFF")
+        ],
+        thinking_config=types.ThinkingConfig(thinking_budget=0),
+    )
+
+async def health_rating_from_image_async(client, image_data, mime_type, user_settings, user_preferences, documents):
+    """Async version of health rating analysis."""
     try:
-        api_key = os.environ.get('GEMINI_API_KEY')
-        if not api_key:
-            return {"error": "API key not configured"}
-        
-        client = genai.Client(api_key=api_key)
-        
-        # Load documents from Cloud Storage
-        pdf_content = get_document_content(bucket_name, '2024-12-16-healthyclaim-factsheet-scb-0900.pdf')
-        txt_content = get_document_content(bucket_name, 'Dietary_Guidelines_for_Americans-2020-2025.txt')
-        
-        if not all([pdf_content, txt_content]):
-            return {"error": "Failed to load health documents"}
-        
         prompt_part = types.Part.from_text(
             text=f"""
             Analyze the provided image of a food item based on the following HEALTH criteria:
@@ -89,44 +129,32 @@ def health_rating_from_image(image_data, mime_type, user_settings, user_preferen
             """
         )
         
-        pdf_file_part = types.Part.from_bytes(data=pdf_content, mime_type='application/pdf')
-        txt_file_part = types.Part.from_bytes(data=txt_content, mime_type='text/plain')
+        pdf_file_part = types.Part.from_bytes(data=documents['health_pdf'], mime_type='application/pdf')
+        txt_file_part = types.Part.from_bytes(data=documents['health_txt'], mime_type='text/plain')
         image_part = types.Part.from_bytes(data=image_data, mime_type=mime_type)
         
         contents = [types.Content(role="user", parts=[prompt_part, image_part, pdf_file_part, txt_file_part])]
         
-        generate_content_config = types.GenerateContentConfig(temperature=0)
-        model = "gemini-2.5-flash"
-        
-        response = client.models.generate_content(
-            model=model,
-            contents=contents,
-            config=generate_content_config
+        # Run in executor to avoid blocking
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(
+            None,
+            lambda: client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=contents,
+                config=get_generate_config()
+            )
         )
         
         return json.loads(clean_json_response(response.text))
         
     except Exception as e:
-        logger.error(f"Error in health_rating_from_image: {e}")
+        logger.error(f"Error in health_rating_from_image_async: {e}")
         return {"error": str(e)}
 
-def safety_rating_from_image(image_data, mime_type, user_settings, user_preferences, bucket_name):
-    """Determine the Safety Rating from an image."""
+async def safety_rating_from_image_async(client, image_data, mime_type, user_settings, user_preferences, documents):
+    """Async version of safety rating analysis."""
     try:
-        api_key = os.environ.get('GEMINI_API_KEY')
-        if not api_key:
-            return {"error": "API key not configured"}
-        
-        client = genai.Client(api_key=api_key)
-        
-        # Load documents from Cloud Storage
-        scogs_definitions = get_document_content(bucket_name, 'SCOGS-definitions.csv')
-        scogs_data = get_document_content(bucket_name, 'SCOGS.csv')
-        fda_news_release = get_document_content(bucket_name, 'FDA News Release.txt')
-        
-        if not all([scogs_definitions, scogs_data, fda_news_release]):
-            return {"error": "Failed to load safety documents"}
-        
         prompt_part = types.Part.from_text(
             text=f"""
             Analyze the provided image of a food item based on the following SAFETY criteria:
@@ -154,27 +182,47 @@ def safety_rating_from_image(image_data, mime_type, user_settings, user_preferen
             """
         )
         
-        scogs_definitions_part = types.Part.from_bytes(data=scogs_definitions, mime_type='text/csv')
-        scogs_data_part = types.Part.from_bytes(data=scogs_data, mime_type='text/csv')
-        fda_news_release_part = types.Part.from_bytes(data=fda_news_release, mime_type='text/plain')
+        scogs_definitions_part = types.Part.from_bytes(data=documents['scogs_definitions'], mime_type='text/csv')
+        scogs_data_part = types.Part.from_bytes(data=documents['scogs_data'], mime_type='text/csv')
+        fda_news_release_part = types.Part.from_bytes(data=documents['fda_news'], mime_type='text/plain')
         image_part = types.Part.from_bytes(data=image_data, mime_type=mime_type)
         
         contents = [types.Content(role="user", parts=[prompt_part, image_part, scogs_definitions_part, scogs_data_part, fda_news_release_part])]
         
-        generate_content_config = types.GenerateContentConfig(temperature=0)
-        model = "gemini-2.5-flash-preview-05-20"
-        
-        response = client.models.generate_content(
-            model=model,
-            contents=contents,
-            config=generate_content_config
+        # Run in executor to avoid blocking
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(
+            None,
+            lambda: client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=contents,
+                config=get_generate_config()
+            )
         )
         
         return json.loads(clean_json_response(response.text))
         
     except Exception as e:
-        logger.error(f"Error in safety_rating_from_image: {e}")
+        logger.error(f"Error in safety_rating_from_image_async: {e}")
         return {"error": str(e)}
+
+async def analyze_food_image_async(image_data, mime_type, user_settings, user_preferences):
+    """Run health and safety analysis in parallel."""
+    # Initialize client and load documents
+    client = initialize_client()
+    documents = load_documents()
+    
+    if not documents:
+        return {"error": "Failed to load documents"}
+    
+    # Run both analyses in parallel
+    health_task = health_rating_from_image_async(client, image_data, mime_type, user_settings, user_preferences, documents)
+    safety_task = safety_rating_from_image_async(client, image_data, mime_type, user_settings, user_preferences, documents)
+    
+    # Wait for both to complete
+    health_result, safety_result = await asyncio.gather(health_task, safety_task)
+    
+    return health_result, safety_result
 
 @functions_framework.http
 def analyze_food_image(request):
@@ -234,14 +282,12 @@ def analyze_food_image(request):
         if not image_data:
             return jsonify({"error": "No image data provided"}), 400, headers
         
-        # Get bucket name from environment or use default
-        bucket_name = os.environ.get('RAG_BUCKET_NAME', 'fda-food-medicine-rag')
-        
         logger.info('Analyzing food image')
         
-        # Get both health and safety ratings
-        health_result = health_rating_from_image(image_data, mime_type, user_settings, user_preferences, bucket_name)
-        safety_result = safety_rating_from_image(image_data, mime_type, user_settings, user_preferences, bucket_name)
+        # Run async analysis
+        health_result, safety_result = asyncio.run(
+            analyze_food_image_async(image_data, mime_type, user_settings, user_preferences)
+        )
         
         if "error" in health_result or "error" in safety_result:
             error_msg = health_result.get("error", "") + " " + safety_result.get("error", "")
