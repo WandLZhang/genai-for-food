@@ -672,7 +672,7 @@ select[multiple] option {
   width: 280px;
   background: var(--surface-container-low);
   box-shadow: 2px 0 8px var(--shadow);
-  transform: translateX(-260px);
+  transform: translateX(-280px);
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 90;
 }
@@ -1078,7 +1078,7 @@ button.control-button {
   
   #menuPanel {
     width: 240px;
-    transform: translateX(-220px);
+    transform: translateX(-240px);
   }
   
   /* JavaScript controlled state on mobile */
