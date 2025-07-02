@@ -433,7 +433,7 @@ export async function fetchNutritionRecommendations() {
         const userSettings = localStorage.getItem('userSettings') || 'General health-conscious individual';
         const userPreferences = localStorage.getItem('userPreferences') || 'No specific dietary restrictions';
         
-        const response = await fetch('https://us-central1-gemini-med-lit-review.cloudfunctions.net/get-food-recommendations', {
+        const response = await fetch('https://us-central1-fda-genai-for-food.cloudfunctions.net/function-food-recommendations', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

@@ -3,7 +3,6 @@ import json
 import functions_framework
 from google import genai
 from google.genai import types
-from google.cloud import storage
 from flask import jsonify
 import logging
 
@@ -11,24 +10,94 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Initialize storage client
-storage_client = storage.Client()
+# Global variables for document caching
+_documents_cache = None
+_client = None
 
-def get_document_content(bucket_name, file_path):
-    """Download and read content from Cloud Storage."""
+def initialize_client():
+    """Initialize Vertex AI client once."""
+    global _client
+    if _client is None:
+        project_id = os.environ.get('PROJECT_ID', 'fda-genai-for-food')
+        location = os.environ.get('LOCATION', 'global')
+        
+        _client = genai.Client(
+            vertexai=True,
+            project=project_id,
+            location=location,
+        )
+        logger.info(f"Initialized Vertex AI client for project {project_id} in {location}")
+    
+    return _client
+
+def load_documents():
+    """Load all documents once and cache them."""
+    global _documents_cache
+    
+    if _documents_cache is not None:
+        return _documents_cache
+    
     try:
-        bucket = storage_client.bucket(bucket_name)
-        blob = bucket.blob(file_path)
-        content = blob.download_as_bytes()
-        return content
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        docs_dir = os.path.join(current_dir, 'documents')
+        
+        _documents_cache = {
+            'health_pdf': read_file_bytes(os.path.join(docs_dir, '2024-12-16-healthyclaim-factsheet-scb-0900.pdf')),
+            'health_txt': read_file_bytes(os.path.join(docs_dir, 'Dietary_Guidelines_for_Americans-2020-2025.txt')),
+            'scogs_definitions': read_file_bytes(os.path.join(docs_dir, 'SCOGS-definitions.csv')),
+            'scogs_data': read_file_bytes(os.path.join(docs_dir, 'SCOGS.csv')),
+            'fda_news': read_file_bytes(os.path.join(docs_dir, 'FDA News Release.txt'))
+        }
+        
+        logger.info("Documents loaded and cached successfully")
+        return _documents_cache
+        
     except Exception as e:
-        logger.error(f"Error reading {file_path} from bucket {bucket_name}: {e}")
+        logger.error(f"Error loading documents: {e}")
         return None
+
+def read_file_bytes(file_path):
+    """Read file and return bytes."""
+    with open(file_path, 'rb') as f:
+        return f.read()
 
 def clean_json_response(response_text):
     """Clean the response text to be valid JSON."""
-    cleaned_text = response_text.strip().replace("```json", "").replace("```", "")
-    return cleaned_text
+    # First try basic cleaning
+    cleaned_text = response_text.strip()
+    
+    # Remove markdown code blocks
+    if "```json" in cleaned_text:
+        cleaned_text = cleaned_text.replace("```json", "").replace("```", "")
+    elif "```" in cleaned_text:
+        cleaned_text = cleaned_text.replace("```", "")
+    
+    # Try to extract JSON object from mixed text
+    # Look for the first { and last } to extract just the JSON
+    start_idx = cleaned_text.find('{')
+    end_idx = cleaned_text.rfind('}')
+    
+    if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+        cleaned_text = cleaned_text[start_idx:end_idx+1]
+    
+    return cleaned_text.strip()
+
+def get_generate_config():
+    """Get generation config with Google Search tool and safety settings."""
+    return types.GenerateContentConfig(
+        temperature=1,
+        top_p=1,
+        seed=0,
+        max_output_tokens=65535,
+        safety_settings=[
+            types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="OFF"),
+            types.SafetySetting(category="HARM_CATEGORY_DANGEROUS_CONTENT", threshold="OFF"),
+            types.SafetySetting(category="HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold="OFF"),
+            types.SafetySetting(category="HARM_CATEGORY_HARASSMENT", threshold="OFF")
+        ],
+        tools=[types.Tool(google_search=types.GoogleSearch())],
+        thinking_config=types.ThinkingConfig(thinking_budget=0),
+    )
 
 @functions_framework.http
 def get_food_recommendations(request):
@@ -60,25 +129,12 @@ def get_food_recommendations(request):
         if not user_settings or not user_preferences:
             return jsonify({"error": "Missing user_settings or user_preferences"}), 400, headers
         
-        # Initialize Gemini client
-        api_key = os.environ.get('GEMINI_API_KEY')
-        if not api_key:
-            return jsonify({"error": "API key not configured"}), 500, headers
+        # Initialize client and load documents
+        client = initialize_client()
+        documents = load_documents()
         
-        client = genai.Client(api_key=api_key)
-        
-        # Get bucket name from environment or use default
-        bucket_name = os.environ.get('RAG_BUCKET_NAME', 'fda-food-medicine-rag')
-        
-        # Load documents from Cloud Storage
-        pdf_content = get_document_content(bucket_name, '2024-12-16-healthyclaim-factsheet-scb-0900.pdf')
-        txt_content = get_document_content(bucket_name, 'Dietary_Guidelines_for_Americans-2020-2025.txt')
-        scogs_definitions = get_document_content(bucket_name, 'SCOGS-definitions.csv')
-        scogs_data = get_document_content(bucket_name, 'SCOGS.csv')
-        fda_news_release = get_document_content(bucket_name, 'FDA News Release.txt')
-        
-        if not all([pdf_content, txt_content, scogs_definitions, scogs_data, fda_news_release]):
-            return jsonify({"error": "Failed to load required documents"}), 500, headers
+        if not documents:
+            return jsonify({"error": "Failed to load documents"}), 500, headers
         
         prompt_part = types.Part.from_text(
             text=f"""
@@ -104,23 +160,27 @@ def get_food_recommendations(request):
 
             In your summary, explain how your choices balance both health and safety considerations.
 
-            Return as a only JSON with the following fields:
+            IMPORTANT: Your response must be ONLY a valid JSON object. Do not include any explanations, markdown formatting, or text before or after the JSON.
+            Start your response with {{ and end with }}
 
-            "Breakfast": {{ "Name": "Name of item", "Description": "Instructions on how to make Breakfast" }},
-            "Lunch": {{ "Name": "Name of item", "Description": "Instructions on how to make Lunch" }},
-            "Dinner": {{ "Name": "Name of item", "Description": "Instructions on how to make Dinner" }},
-            "Snack Idea 1": {{ "Name": "Name of item", "Description": "Instructions on how to make Snack 1" }},
-            "Snack Idea 2": {{ "Name": "Name of item", "Description": "Instructions on how to make Snack 2" }},
-            "Summary": "Short 2 paragraph summary explaining how these choices balance both health and safety considerations."
+            Return exactly this JSON structure:
+            {{
+                "Breakfast": {{ "Name": "Name of item", "Description": "Instructions on how to make Breakfast" }},
+                "Lunch": {{ "Name": "Name of item", "Description": "Instructions on how to make Lunch" }},
+                "Dinner": {{ "Name": "Name of item", "Description": "Instructions on how to make Dinner" }},
+                "Snack Idea 1": {{ "Name": "Name of item", "Description": "Instructions on how to make Snack 1" }},
+                "Snack Idea 2": {{ "Name": "Name of item", "Description": "Instructions on how to make Snack 2" }},
+                "Summary": "Short 2 paragraph summary explaining how these choices balance both health and safety considerations."
+            }}
             """
         )
         
         # Create content parts from documents
-        pdf_file_part = types.Part.from_bytes(data=pdf_content, mime_type='application/pdf')
-        txt_file_part = types.Part.from_bytes(data=txt_content, mime_type='text/plain')
-        scogs_definitions_part = types.Part.from_bytes(data=scogs_definitions, mime_type='text/csv')
-        scogs_data_part = types.Part.from_bytes(data=scogs_data, mime_type='text/csv')
-        fda_news_release_part = types.Part.from_bytes(data=fda_news_release, mime_type='text/plain')
+        pdf_file_part = types.Part.from_bytes(data=documents['health_pdf'], mime_type='application/pdf')
+        txt_file_part = types.Part.from_bytes(data=documents['health_txt'], mime_type='text/plain')
+        scogs_definitions_part = types.Part.from_bytes(data=documents['scogs_definitions'], mime_type='text/csv')
+        scogs_data_part = types.Part.from_bytes(data=documents['scogs_data'], mime_type='text/csv')
+        fda_news_release_part = types.Part.from_bytes(data=documents['fda_news'], mime_type='text/plain')
         
         contents = [
             types.Content(
@@ -129,16 +189,14 @@ def get_food_recommendations(request):
             ),
         ]
         
-        tools = [types.Tool(google_search=types.GoogleSearch())]
-        generate_content_config = types.GenerateContentConfig(tools=tools)
-        model = "gemini-2.5-flash-preview-05-20"
+        model = "gemini-2.5-flash"
         
         logger.info('Generating recommendations')
         
         response = client.models.generate_content(
             model=model,
             contents=contents,
-            config=generate_content_config,
+            config=get_generate_config(),
         )
         
         # Clean and parse the response
@@ -149,7 +207,14 @@ def get_food_recommendations(request):
         
     except json.JSONDecodeError as e:
         logger.error(f"JSON decode error: {e}")
-        return jsonify({"error": "Failed to parse Gemini response", "details": str(e)}), 500, headers
+        logger.error(f"Raw response text: {response.text}")
+        logger.error(f"Cleaned response: {cleaned_result}")
+        # Return a more helpful error response
+        return jsonify({
+            "error": "Failed to parse Gemini response", 
+            "details": str(e),
+            "raw_response_preview": response.text[:500] if response.text else "No response text"
+        }), 500, headers
     except Exception as e:
         logger.error(f"Error in get_food_recommendations: {e}")
         return jsonify({"error": "Internal server error", "details": str(e)}), 500, headers

@@ -17,3 +17,34 @@
 __pycache__/
 # Ignored by the build system
 /setup.cfg
+
+# Virtual environments
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test files
+test_*.py
+*_test.py
+
+# Documentation
+README.md
+*.md
+
+# Temporary files
+*.tmp
+*.temp
+*.log

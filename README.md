@@ -401,6 +401,27 @@ gcloud functions deploy function-food-analysis \
 cd ../..
 ```
 
+**`function-food-text-analysis`**
+```bash
+cd backend/function-food-text-analysis
+gcloud functions deploy analyze-food-text \
+  --gen2 \
+  --runtime=python312 \
+  --region=us-central1 \
+  --source=. \
+  --entry-point=analyze_food_text \
+  --trigger-http \
+  --allow-unauthenticated \
+  --timeout=600s \
+  --memory=2Gi \
+  --cpu=2 \
+  --min-instances=1 \
+  --max-instances=100 \
+  --concurrency=1 \
+  --set-env-vars PROJECT_ID=YOUR_PROJECT_ID,LOCATION=global
+cd ../..
+```
+
 **`function-food-chat`**
 ```bash
 cd backend/function-food-chat
@@ -421,13 +442,19 @@ cd ../..
 cd backend/function-food-recommendations
 gcloud functions deploy function-food-recommendations \
   --gen2 \
-  --runtime=python311 \
+  --runtime=python312 \
   --region=us-central1 \
   --source=. \
   --entry-point=get_food_recommendations \
   --trigger-http \
   --allow-unauthenticated \
-  --set-env-vars GEMINI_API_KEY=YOUR_GEMINI_API_KEY,RAG_BUCKET_NAME=YOUR_RAG_BUCKET_NAME
+  --timeout=600s \
+  --memory=4Gi \
+  --cpu=4 \
+  --min-instances=1 \
+  --max-instances=100 \
+  --concurrency=1 \
+  --set-env-vars PROJECT_ID=YOUR_PROJECT_ID,LOCATION=global
 cd ../..
 ```
 
@@ -522,6 +549,7 @@ echo "Updating nutritionAssistant.js..."
 sed -i '' "s|https://us-central1-gemini-med-lit-review\.cloudfunctions\.net/get-food-recommendations|https://us-central1-${PROJECT_ID}.cloudfunctions.net/function-food-recommendations|g" frontend/public/modules/nutritionAssistant.js
 sed -i '' "s|https://us-central1-gemini-med-lit-review\.cloudfunctions\.net/analyze-food-image|https://us-central1-${PROJECT_ID}.cloudfunctions.net/function-food-analysis|g" frontend/public/modules/nutritionAssistant.js
 sed -i '' "s|https://us-central1-gemini-med-lit-review\.cloudfunctions\.net/food-chat|https://us-central1-${PROJECT_ID}.cloudfunctions.net/function-food-chat|g" frontend/public/modules/nutritionAssistant.js
+sed -i '' "s|https://us-central1-fda-genai-for-food\.cloudfunctions\.net/analyze-food-text|https://us-central1-${PROJECT_ID}.cloudfunctions.net/analyze-food-text|g" frontend/public/modules/nutritionAssistant.js
 
 # Update sitePrecheck.js
 echo "Updating sitePrecheck.js..."
@@ -539,7 +567,7 @@ If you want to verify your deployed function URLs, run:
 
 ```bash
 # Get all function URLs
-for func in function-audio-output function-food-analysis function-food-chat function-food-recommendations function-image-inspection function-site-check; do
+for func in function-audio-output function-food-analysis analyze-food-text function-food-chat function-food-recommendations function-image-inspection function-site-check function-get-map; do
   echo "$func:"
   gcloud functions describe $func --region=us-central1 --format="value(serviceConfig.uri)" 2>/dev/null || echo "Not deployed"
   echo ""
