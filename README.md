@@ -32,6 +32,7 @@ gcloud services enable \
   discoveryengine.googleapis.com \
   aiplatform.googleapis.com \
   firebase.googleapis.com \
+  firestore.googleapis.com \
   iam.googleapis.com \
   static-maps-backend.googleapis.com
 ```
@@ -213,7 +214,6 @@ python3 backend/upload-rag-documents.py --datastore-id YOUR_DATASTORE_ID --files
 ```
 
 ## 5. Backend Deployment
-## 5. Backend Deployment
 
 The backend consists of several Python Cloud Functions.
 
@@ -234,9 +234,19 @@ gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
 gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
   --member=serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com \
   --role=roles/aiplatform.user
+
+# Grant Datastore User role for Firestore access
+gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
+  --member=serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com \
+  --role=roles/datastore.user
+
+# Grant Discovery Engine Viewer role for searching datastores
+gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
+  --member=serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com \
+  --role=roles/discoveryengine.viewer
 ```
 
-This step is required to allow the service account to build and deploy Cloud Functions, and to access Vertex AI services. Without these permissions, deployments will fail with a build service account error or Vertex AI access error.
+This step is required to allow the service account to build and deploy Cloud Functions, access Vertex AI services, read/write to Firestore, and search Discovery Engine datastores. Without these permissions, deployments will fail with build service account errors, Vertex AI access errors, Firestore permission errors, or Discovery Engine search errors.
 
 ### 5.2. Deploying Cloud Functions
 

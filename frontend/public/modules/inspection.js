@@ -214,9 +214,10 @@ export async function processInspection(audioManager) {
         let preliminaryCitations = [];
         let verifiedCitations = [];
         let summary = '';
+        let analysisStream = null;
 
-        // Send the POST request first to start the analysis
-        const postPromise = fetch('https://us-central1-fda-genai-for-food.cloudfunctions.net/function-image-inspection', {
+        // First, send POST request to get job_id
+        const postResponse = await fetch('https://us-central1-fda-genai-for-food.cloudfunctions.net/function-image-inspection', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -226,10 +227,23 @@ export async function processInspection(audioManager) {
                 background: background
             })
         });
+        
+        if (!postResponse.ok) {
+            throw new Error(`HTTP error! status: ${postResponse.status}`);
+        }
 
-        // Start streaming status updates simultaneously
-        const streamUrl = 'https://us-central1-fda-genai-for-food.cloudfunctions.net/function-image-inspection/stream';
-        const analysisStream = new EventSource(streamUrl);
+        const postResult = await postResponse.json();
+        const jobId = postResult.job_id;
+        
+        if (!jobId) {
+            throw new Error('No job ID received from server');
+        }
+
+        console.log('Received job ID:', jobId);
+
+        // Now connect to stream with job_id
+        const streamUrl = `https://us-central1-fda-genai-for-food.cloudfunctions.net/function-image-inspection/stream?job_id=${jobId}`;
+        analysisStream = new EventSource(streamUrl);
 
         // Handle streaming events
         analysisStream.onmessage = (event) => {
@@ -358,6 +372,27 @@ export async function processInspection(audioManager) {
                         displayCitations(data.data.citations, data.data.summary, audioManager);
                         break;
                         
+                    case 'result':
+                        // Handle final result if sent separately
+                        analysisStream.close();
+                        statusElement.innerHTML = `
+                            <div style="color: var(--tertiary);">
+                                ✓ Analysis complete
+                            </div>
+                        `;
+                        preliminaryCitationsElement.style.display = 'none';
+                        displayCitations(data.data.citations, data.data.summary, audioManager);
+                        break;
+                        
+                    case 'error':
+                        analysisStream.close();
+                        statusElement.innerHTML = `
+                            <div style="color: var(--error);">
+                                Error: ${data.content}
+                            </div>
+                        `;
+                        break;
+                        
                     case 'status':
                         // Fallback for any status messages
                         statusElement.innerHTML = `
@@ -385,21 +420,12 @@ export async function processInspection(audioManager) {
         analysisStream.onerror = (error) => {
             console.error('Stream error:', error);
             analysisStream.close();
+            statusElement.innerHTML = `
+                <div style="color: var(--error);">
+                    Connection lost. Please try again.
+                </div>
+            `;
         };
-
-        // Wait for the POST request to complete
-        const response = await postPromise;
-        
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const result = await response.json();
-        
-        // If stream didn't provide complete results, use POST response
-        if (!verifiedCitations.length) {
-            displayCitations(result.citations, result.summary, audioManager);
-        }
         
         // Keep retake button visible after processing
         retakeButton.style.display = 'flex';
@@ -409,11 +435,11 @@ export async function processInspection(audioManager) {
         console.error('Error processing inspection:', err);
         const statusElement = document.getElementById('inspectionStatus');
         if (statusElement) {
-                statusElement.innerHTML = `
-                    <div style="color: var(--error);">
-                        An error occurred while processing the inspection: ${err.message}
-                    </div>
-                `;
+            statusElement.innerHTML = `
+                <div style="color: var(--error);">
+                    An error occurred while processing the inspection: ${err.message}
+                </div>
+            `;
         }
     } finally {
         processButton.disabled = false;

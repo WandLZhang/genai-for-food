@@ -3,9 +3,9 @@ import io
 import os
 import json
 import logging
-import queue
 import threading
 import time
+import uuid
 from datetime import datetime
 
 import flask
@@ -17,36 +17,15 @@ from google import genai
 from google.api_core.client_options import ClientOptions
 from google.api_core.exceptions import NotFound, PermissionDenied, ResourceExhausted
 from google.cloud import discoveryengine
+from google.cloud import firestore
 from google.genai import types
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-class StreamLogger(logging.Logger):
-    def __init__(self, name, level=logging.NOTSET):
-        super().__init__(name, level)
-        self.queue = queue.Queue()
-
-    def _log(self, level, msg, args, exc_info=None, extra=None, stack_info=False):
-        super()._log(level, msg, args, exc_info, extra, stack_info)
-        self.queue.put(json.dumps({"type": "status", "content": msg % args}))
-    
-    def stream_event(self, event_type, content=None, data=None):
-        """Send a structured event to the stream"""
-        event = {"type": event_type}
-        if content:
-            event["content"] = content
-        if data:
-            event["data"] = data
-        self.queue.put(json.dumps(event))
-
-stream_logger = StreamLogger('stream_logger')
-
-# Global variables for tracking processing status
-current_request_id = None
-current_processing_stage = "idle"
-processing_lock = threading.Lock()
+# Initialize Firestore client
+db = firestore.Client()
 
 # Discovery Engine setup
 PROJECT_ID = os.environ.get('GCP_PROJECT', 'YOUR_PROJECT_ID')
@@ -89,6 +68,45 @@ COMMON_SAFETY_SETTINGS = [
 
 # Grounding tool for Google Search
 GROUNDING_TOOL = [types.Tool(google_search=types.GoogleSearch())]
+
+# Firestore helper functions
+def create_job(inspection_type):
+    """Create a new job document in Firestore"""
+    job_id = str(uuid.uuid4())
+    job_ref = db.collection('inspection_jobs').document(job_id)
+    job_ref.set({
+        'job_id': job_id,
+        'status': 'created',
+        'created_at': firestore.SERVER_TIMESTAMP,
+        'inspection_type': inspection_type,
+        'events': [],
+        'result': None
+    })
+    return job_id
+
+def add_event_to_job(job_id, event_type, content=None, data=None):
+    """Add an event to the job document"""
+    job_ref = db.collection('inspection_jobs').document(job_id)
+    event = {
+        'timestamp': datetime.utcnow(),
+        'type': event_type,
+        'content': content or '',
+        'data': data or {}
+    }
+    job_ref.update({
+        'events': firestore.ArrayUnion([event]),
+        'status': 'processing'
+    })
+    logger.info(f"Added event to job {job_id}: {event_type}")
+
+def update_job_result(job_id, result, status='completed'):
+    """Update the job with final results"""
+    job_ref = db.collection('inspection_jobs').document(job_id)
+    job_ref.update({
+        'result': result,
+        'status': status,
+        'completed_at': firestore.SERVER_TIMESTAMP
+    })
 
 # RAG Utility Functions
 def search_datastore(query: str, data_store_id: str) -> list:
@@ -226,9 +244,10 @@ def plot_bounding_box(img, citation, verified_section, index):
     
     return base64.b64encode(img_byte_arr.getvalue()).decode('utf-8')
 
-def generate_initial_response(inspection_type, image_data):
+def generate_initial_response(job_id, inspection_type, image_data):
     print(f"Starting generate_initial_response for {inspection_type}")
-    stream_logger.stream_event("INITIAL_ANALYSIS_START", "Initializing image analysis with AI...")
+    add_event_to_job(job_id, "INITIAL_ANALYSIS_START", "Initializing image analysis with AI...")
+    
     text_prompt = f"""As an FDA inspector performing a {inspection_type} inspection, analyze the given image.
     Based on Title 21 regulations, identify potential citation opportunities and reference 
     the specific sections of Title 21 that apply. Provide a detailed explanation for each 
@@ -261,7 +280,7 @@ def generate_initial_response(inspection_type, image_data):
     ]
 
     print(f"Sending request to Gemini model with prompt length: {len(text_prompt)}")
-    stream_logger.stream_event("INITIAL_ANALYSIS_PROCESSING", "AI is processing visual elements and identifying potential violations...")
+    add_event_to_job(job_id, "INITIAL_ANALYSIS_PROCESSING", "AI is processing visual elements and identifying potential violations...")
     
     # Generate content with streaming
     response_text = ""
@@ -295,8 +314,9 @@ If an object is present multiple times, name them according to their unique char
             parsed_response = json.loads(json_str)
             print(f"Parsed JSON response with {len(parsed_response['citations'])} citations")
             
-            # Stream the initial citations found
-            stream_logger.stream_event(
+            # Add event for initial citations identified
+            add_event_to_job(
+                job_id,
                 "INITIAL_CITATIONS_IDENTIFIED", 
                 "Initial potential violations identified.",
                 {"citations": parsed_response.get('citations', [])}
@@ -312,11 +332,12 @@ If an object is present multiple times, name them according to their unique char
 def strip_image_from_citations(citations):
     return [{k: v for k, v in citation.items() if k != 'image'} for citation in citations]
 
-def verify_and_complete_response(initial_response, img):
+def verify_and_complete_response(job_id, initial_response, img):
     citations_count = len(initial_response.get('citations', []))
     print(f"Starting verify_and_complete_response with {citations_count} citations")
     
-    stream_logger.stream_event(
+    add_event_to_job(
+        job_id,
         "VERIFICATION_PROCESS_START",
         "Starting verification and cross-referencing of identified violations with FDA regulations.",
         {"citation_count": citations_count}
@@ -327,13 +348,15 @@ def verify_and_complete_response(initial_response, img):
     for index, citation in enumerate(initial_response.get('citations', [])):
         print(f"Processing citation {index + 1}")
         
-        stream_logger.stream_event(
+        add_event_to_job(
+            job_id,
             "CITATION_VERIFICATION_START",
             f"Verifying violation {index + 1} of {total_citations}...",
             {"citation_index": index, "total_citations": total_citations}
         )
         
-        stream_logger.stream_event(
+        add_event_to_job(
+            job_id,
             "CITATION_CODE_LOOKUP",
             f"Retrieving relevant FDA regulations for violation {index + 1}...",
             {"citation_index": index}
@@ -343,11 +366,13 @@ def verify_and_complete_response(initial_response, img):
         print(f"Retrieved relevant codes with length: {len(relevant_codes)}")
         
         print(f"Generating verification prompt for citation {index + 1}")
-        stream_logger.stream_event(
+        add_event_to_job(
+            job_id,
             "CITATION_AI_VERIFICATION",
             f"Cross-referencing violation {index + 1} with AI and FDA data...",
             {"citation_index": index}
         )
+        
         verification_prompt = f"""Given the following citation and other relevant codes retrieved from the FDA Title 21 regulations, 
         decide which is better and more relevant for the given citation "reason": the original cited section OR another section from the retrieved relevant codes. Use chain of thought. If there is a better section code from the retrieved relevant codes, replace the original cited "section" and "text" fields with the better option from the retrieved relevant codes. 
         Then, generate a valid URL for the (corrected) section.
@@ -424,8 +449,9 @@ def verify_and_complete_response(initial_response, img):
                     verified_citation['image'] = f"data:image/jpeg;base64,{image_base64}"
                     verified_citations.append(verified_citation)
                     
-                    # Stream the processed citation
-                    stream_logger.stream_event(
+                    # Add event for processed citation
+                    add_event_to_job(
+                        job_id,
                         "SINGLE_CITATION_PROCESSED",
                         f"Violation {index + 1} processed and image generated.",
                         {
@@ -453,10 +479,12 @@ def verify_and_complete_response(initial_response, img):
         print(f"Total length of verified_citations JSON (without images): {len(citations_json_without_images)}")
 
         print("Generating summary")
-        stream_logger.stream_event(
+        add_event_to_job(
+            job_id,
             "SUMMARY_GENERATION_START",
             "All violations processed. Generating final inspection summary..."
         )
+        
         summary_prompt = f"""Generate a brief summary of the following FDA citations in 2-3 sentences. Focus on the key issues identified and their potential impact on food safety or compliance.
 
         Citations:
@@ -484,13 +512,15 @@ def verify_and_complete_response(initial_response, img):
                 summary_text += chunk.text
         print(f"Generated summary with length: {len(summary_text)}")
         
-        stream_logger.stream_event(
+        add_event_to_job(
+            job_id,
             "SUMMARY_GENERATED",
             "Inspection summary generated.",
             {"summary": summary_text.strip()}
         )
         
-        stream_logger.stream_event(
+        add_event_to_job(
+            job_id,
             "ANALYSIS_FINALIZING",
             "Finalizing analysis..."
         )
@@ -500,7 +530,8 @@ def verify_and_complete_response(initial_response, img):
             "summary": summary_text.strip()
         }
         
-        stream_logger.stream_event(
+        add_event_to_job(
+            job_id,
             "ANALYSIS_COMPLETE",
             "Image inspection complete.",
             final_response
@@ -510,16 +541,85 @@ def verify_and_complete_response(initial_response, img):
     
     return {"citations": verified_citations, "summary": ""}
 
-def generate_status_stream():
-    """Generate status stream from StreamLogger queue"""
-    print("generate_status_stream called - stream endpoint is active")
+def process_image_async(job_id, image_data, inspection_type):
+    """Process the image asynchronously and update Firestore"""
+    try:
+        # Generate initial response
+        initial_response = generate_initial_response(job_id, inspection_type, image_data)
+        
+        if 'error' in initial_response:
+            update_job_result(job_id, {"error": initial_response['error']}, status='error')
+            return
+        
+        # Verify and complete response
+        verified_response = verify_and_complete_response(job_id, initial_response, image_data)
+        
+        # Update job with final result
+        update_job_result(job_id, verified_response)
+        
+    except Exception as e:
+        logger.error(f"Error processing job {job_id}: {str(e)}")
+        update_job_result(job_id, {"error": str(e)}, status='error')
+
+def generate_status_stream(job_id):
+    """Generate status stream from Firestore updates"""
+    print(f"generate_status_stream called for job_id: {job_id}")
+    
+    # Get the job document reference
+    job_ref = db.collection('inspection_jobs').document(job_id)
+    
+    # Track which events we've already sent
+    sent_event_count = 0
+    last_status = None
+    
     while True:
         try:
-            message = stream_logger.queue.get(timeout=1)
-            print(f"Streaming message: {message}")
-            yield f"data: {message}\n\n"
-        except queue.Empty:
+            # Get the current job document
+            job_doc = job_ref.get()
+            
+            if not job_doc.exists:
+                yield f"data: {json.dumps({'type': 'error', 'content': 'Job not found'})}\n\n"
+                break
+            
+            job_data = job_doc.to_dict()
+            current_status = job_data.get('status')
+            
+            # Send any new events
+            events = job_data.get('events', [])
+            while sent_event_count < len(events):
+                event = events[sent_event_count].copy()  # Make a copy to avoid modifying the original
+                # Convert Firestore timestamp to ISO string if present
+                if 'timestamp' in event:
+                    timestamp = event['timestamp']
+                    # Handle both DatetimeWithNanoseconds and regular datetime objects
+                    if hasattr(timestamp, 'isoformat'):
+                        event['timestamp'] = timestamp.isoformat()
+                    elif hasattr(timestamp, 'seconds'):
+                        # Handle protobuf timestamp format
+                        event['timestamp'] = datetime.fromtimestamp(timestamp.seconds).isoformat()
+                print(f"Streaming event: {event}")
+                yield f"data: {json.dumps(event)}\n\n"
+                sent_event_count += 1
+            
+            # Check if job is completed or errored
+            if current_status in ['completed', 'error']:
+                if current_status != last_status and job_data.get('result'):
+                    # Send final result if not already sent
+                    yield f"data: {json.dumps({'type': 'result', 'data': job_data['result']})}\n\n"
+                break
+            
+            last_status = current_status
+            
+            # Send heartbeat
             yield f"data: {json.dumps({'type': 'heartbeat'})}\n\n"
+            
+            # Wait a bit before checking again
+            time.sleep(0.5)
+            
+        except Exception as e:
+            logger.error(f"Error in status stream: {str(e)}")
+            yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"
+            break
 
 @functions_framework.http
 def process_inspection(request):
@@ -542,20 +642,23 @@ def process_inspection(request):
     # Handle streaming endpoint
     if request.method == 'GET' and request.path.endswith('/stream'):
         print("Handling GET /stream request")
+        
+        # Get job_id from query parameters
+        job_id = request.args.get('job_id')
+        if not job_id:
+            return jsonify({'error': 'Missing job_id parameter'}), 400, headers
+        
         headers['Content-Type'] = 'text/event-stream'
         headers['Cache-Control'] = 'no-cache'
         headers['Connection'] = 'keep-alive'
         headers['X-Accel-Buffering'] = 'no'  # Disable proxy buffering
         
-        return flask.Response(generate_status_stream(), 200, headers)
+        return flask.Response(generate_status_stream(job_id), 200, headers)
 
     # Handle regular POST request for image analysis
     if request.method == 'POST':
         print("Handling POST request")
         headers['Content-Type'] = 'application/json'
-        
-        # Clear the queue for new inspection to prevent stale messages
-        stream_logger.queue = queue.Queue()
         
         try:
             print("About to get JSON data from request")
@@ -576,31 +679,28 @@ def process_inspection(request):
                 print("Missing required fields")
                 return jsonify({'error': 'Missing required fields'}), 400, headers
 
-            # Stream that analysis has started
-            print("About to send ANALYSIS_STARTED event")
-            stream_logger.stream_event(
+            # Create a new job
+            job_id = create_job(inspection_type)
+            print(f"Created job with ID: {job_id}")
+            
+            # Add initial event
+            add_event_to_job(
+                job_id,
                 "ANALYSIS_STARTED",
                 "Image inspection process initiated.",
                 {"inspection_type": inspection_type}
             )
-            print("ANALYSIS_STARTED event sent")
-
-            # Generate initial response
-            print("About to call generate_initial_response")
-            initial_response = generate_initial_response(inspection_type, image_data)
-            print(f"generate_initial_response returned: {bool(initial_response)}")
             
-            if 'error' in initial_response:
-                print(f"Error in initial response: {initial_response['error']}")
-                return jsonify(initial_response), 500, headers
-
-            # Verify and complete response
-            print("About to call verify_and_complete_response")
-            verified_response = verify_and_complete_response(initial_response, image_data)
-            print(f"verify_and_complete_response returned: {bool(verified_response)}")
-
-            print("Returning final response")
-            return jsonify(verified_response), 200, headers
+            # Start async processing in a background thread
+            thread = threading.Thread(
+                target=process_image_async,
+                args=(job_id, image_data, inspection_type)
+            )
+            thread.daemon = True
+            thread.start()
+            
+            # Return job_id immediately
+            return jsonify({'job_id': job_id}), 200, headers
 
         except Exception as e:
             print(f"Exception caught: {str(e)}")
@@ -617,12 +717,3 @@ if __name__ == "__main__":
     app = functions_framework.create_app(target="process_inspection")
     port = int(os.environ.get('PORT', 8080))
     app.run(host="0.0.0.0", port=port, debug=True)
-
-    # Test the streaming endpoint
-    import requests
-    stream_url = f"http://localhost:{port}/stream"
-    print(f"Testing streaming endpoint at {stream_url}")
-    response = requests.get(stream_url, stream=True)
-    for line in response.iter_lines():
-        if line:
-            print(line.decode('utf-8'))
