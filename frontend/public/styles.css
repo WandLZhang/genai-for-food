@@ -1101,11 +1101,21 @@ button.control-button {
 
 /* Nutrition Assistant Styles */
 .nutrition-app-container {
-  position: relative;
-  width: 100%;
-  height: calc(100vh - 80px);
+  position: fixed;
+  top: 64px; /* Height of the header */
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: calc(100vh - 64px);
   overflow: hidden;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+/* Ensure the nutrition view itself doesn't have unwanted constraints */
+#nutritionView {
+  margin: 0;
+  padding: 0;
 }
 
 .nutrition-camera-container {
@@ -1143,7 +1153,7 @@ button.control-button {
 .nutrition-modules-panel {
   position: absolute;
   top: 20px;
-  left: 20px;
+  left: 40px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -1151,7 +1161,7 @@ button.control-button {
 }
 
 .nutrition-module-btn {
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.2);
   border: none;
   border-radius: 12px;
   padding: 12px 18px;
@@ -1174,7 +1184,7 @@ button.control-button {
 }
 
 .nutrition-module-btn.active {
-  background: #4CAF50;
+  background: rgba(66, 66, 66, 0.95);
   color: white;
 }
 
@@ -1396,7 +1406,7 @@ button.control-button {
   
   .nutrition-modules-panel {
     top: 10px;
-    left: 10px;
+    left: 40px;
   }
   
   .nutrition-module-btn {
