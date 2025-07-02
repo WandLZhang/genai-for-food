@@ -30,6 +30,17 @@ export async function initNutritionCamera() {
             analyzeButton.classList.add('active');
         }
     }, 100);
+    
+    // Set up file input handler
+    const fileInput = document.getElementById('nutritionFileInput');
+    if (fileInput) {
+        fileInput.addEventListener('change', async (event) => {
+            const file = event.target.files[0];
+            if (file && window.handleNutritionFileUpload) {
+                await window.handleNutritionFileUpload(file);
+            }
+        });
+    }
 }
 
 // Capture nutrition photo
@@ -76,16 +87,8 @@ export async function captureNutritionPhoto(resizeAndCompressImage) {
             setTimeout(() => document.body.removeChild(overlay), 300);
         }, 150);
         
-        // Open the analyze panel with results
-        const panel = document.getElementById('nutritionContentPanel');
-        const title = document.getElementById('nutritionPanelTitle');
-        const subtitle = document.getElementById('nutritionPanelSubtitle');
-        const content = document.getElementById('nutritionPanelContent');
-        
-        title.textContent = 'Analyze a Food Item';
-        subtitle.textContent = 'Get detailed nutrition information';
-        content.innerHTML = generateNutritionAnalyzeContent();
-        panel.classList.add('active');
+        // Show analysis overlay instead of panel
+        showAnalysisOverlay();
         
         // Start analysis
         analyzeNutritionFood();
@@ -95,13 +98,58 @@ export async function captureNutritionPhoto(resizeAndCompressImage) {
     }
 }
 
+// Handle file upload for nutrition
+export async function handleNutritionFileUpload(file, resizeAndCompressImage) {
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = async (loadEvent) => {
+            try {
+                // Resize image for better performance
+                nutritionCapturedImage = await resizeAndCompressImage(loadEvent.target.result, 1280, 1280, 0.75);
+                
+                // Visual feedback
+                const overlay = document.createElement('div');
+                overlay.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: white;
+                    z-index: 1000;
+                    pointer-events: none;
+                    opacity: 0.8;
+                    transition: opacity 0.3s ease;
+                `;
+                document.body.appendChild(overlay);
+                
+                setTimeout(() => {
+                    overlay.style.opacity = '0';
+                    setTimeout(() => document.body.removeChild(overlay), 300);
+                }, 150);
+                
+                // Show analysis overlay instead of panel
+                showAnalysisOverlay();
+                
+                // Start analysis
+                analyzeNutritionFood();
+            } catch (error) {
+                console.error('Error processing uploaded image:', error);
+                nutritionCapturedImage = loadEvent.target.result; // Fallback to original
+                
+                // Still show the overlay and try to analyze
+                showAnalysisOverlay();
+                
+                analyzeNutritionFood();
+                alert('Could not resize image. Proceeding with original if possible.');
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
 // Open nutrition module
 export function openNutritionModule(moduleName) {
-    const panel = document.getElementById('nutritionContentPanel');
-    const title = document.getElementById('nutritionPanelTitle');
-    const subtitle = document.getElementById('nutritionPanelSubtitle');
-    const content = document.getElementById('nutritionPanelContent');
-    
     // Remove active class from all buttons
     document.querySelectorAll('.nutrition-module-btn').forEach(btn => btn.classList.remove('active'));
     
@@ -116,36 +164,41 @@ export function openNutritionModule(moduleName) {
         }
     });
     
-    // For analyze module, just update the active state without opening panel
+    // For analyze module, just update the active state without opening overlay
     if (moduleName === 'analyze') {
-        // Close panel if it's open
-        panel.classList.remove('active');
+        // Close any open overlays
+        closeAllNutritionOverlays();
         return;
     }
     
+    // Show the appropriate overlay
     switch(moduleName) {
         case 'history':
-            title.textContent = 'Food History';
-            subtitle.textContent = 'Your recent food intake and analysis';
-            content.innerHTML = generateNutritionHistoryContent();
+            const historyContent = document.getElementById('nutritionHistoryContent');
+            if (historyContent) {
+                historyContent.innerHTML = generateNutritionHistoryContent();
+            }
+            showNutritionOverlay('history');
             break;
         case 'recommendations':
-            title.textContent = 'Recommendations';
-            subtitle.textContent = 'Personalized nutrition suggestions';
-            content.innerHTML = generateNutritionRecommendationsContent();
+            const recoContent = document.getElementById('nutritionRecommendationsContent');
+            if (recoContent) {
+                recoContent.innerHTML = generateNutritionRecommendationsContent();
+            }
+            showNutritionOverlay('recommendations');
             // Load recommendations if not already loaded
             if (!window.nutritionRecommendations) {
                 fetchNutritionRecommendations();
             }
             break;
         case 'chat':
-            title.textContent = 'Food Claim Verification Chat';
-            subtitle.textContent = 'Ask questions about food claims and nutrition';
-            content.innerHTML = generateNutritionChatContent();
+            const chatContent = document.getElementById('nutritionChatContent');
+            if (chatContent) {
+                chatContent.innerHTML = generateNutritionChatContent();
+            }
+            showNutritionOverlay('chat');
             break;
     }
-    
-    panel.classList.add('active');
 }
 
 // Close nutrition panel
@@ -243,7 +296,11 @@ export function clearNutritionHistory() {
     if (confirm('Are you sure you want to clear your food history?')) {
         foodHistory = [];
         localStorage.setItem('foodHistory', JSON.stringify(foodHistory));
-        document.getElementById('nutritionPanelContent').innerHTML = generateNutritionHistoryContent();
+        // Update the history overlay content
+        const historyContent = document.getElementById('nutritionHistoryContent');
+        if (historyContent) {
+            historyContent.innerHTML = generateNutritionHistoryContent();
+        }
     }
 }
 
@@ -306,7 +363,7 @@ export async function fetchNutritionRecommendations() {
 }
 
 // Analyze nutrition food
-async function analyzeNutritionFood(audioManager) {
+async function analyzeNutritionFood() {
     if (!nutritionCapturedImage) return;
     
     try {
@@ -314,7 +371,7 @@ async function analyzeNutritionFood(audioManager) {
         const userSettings = localStorage.getItem('userSettings') || 'General health-conscious individual';
         const userPreferences = localStorage.getItem('userPreferences') || 'No specific dietary restrictions';
         
-        const response = await fetch('https://us-central1-gemini-med-lit-review.cloudfunctions.net/analyze-food-image', {
+        const response = await fetch('https://us-central1-fda-genai-for-food.cloudfunctions.net/function-food-analysis', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -348,43 +405,34 @@ async function analyzeNutritionFood(audioManager) {
         // Update UI
         const resultContainer = document.getElementById('nutritionAnalysisResult');
         if (resultContainer) {
+            // Process summaries to add citation tooltips
+            const healthSummaryWithTooltips = addCitationTooltips(data.healthSummary, data.healthCitations);
+            const safetySummaryWithTooltips = addCitationTooltips(data.safetySummary, data.safetyCitations);
+            
             resultContainer.innerHTML = `
                 <div class="nutrition-food-item">
                     <h3>Analysis Results</h3>
                     <div style="margin: 15px 0;">
                         <h4>Health Rating: <span style="color: ${data.healthRating === 'Healthy' ? '#4CAF50' : '#f44336'}">${data.healthRating}</span></h4>
-                        <p>${data.healthSummary}</p>
-                        ${data.healthCitations?.length ? `
-                            <div style="margin-top: 10px; font-size: 12px;">
-                                ${data.healthCitations.map(citation => `
-                                    <div style="margin: 5px 0;">
-                                        [${citation.id}] ${citation.source} - ${citation.context}
-                                    </div>
-                                `).join('')}
-                            </div>
-                        ` : ''}
+                        <p class="citation-text">${healthSummaryWithTooltips}</p>
                     </div>
                     <div style="margin: 15px 0;">
                         <h4>Safety Rating: <span style="color: ${data.safetyRating === 'Safe' ? '#4CAF50' : '#f44336'}">${data.safetyRating}</span></h4>
-                        <p>${data.safetySummary}</p>
-                        ${data.safetyCitations?.length ? `
-                            <div style="margin-top: 10px; font-size: 12px;">
-                                ${data.safetyCitations.map(citation => `
-                                    <div style="margin: 5px 0;">
-                                        [${citation.id}] ${citation.source} - ${citation.context}
-                                    </div>
-                                `).join('')}
-                            </div>
-                        ` : ''}
+                        <p class="citation-text">${safetySummaryWithTooltips}</p>
                     </div>
                 </div>
                 <button class="nutrition-analyze-btn" onclick="window.resetNutritionAnalysis()">Analyze Another</button>
             `;
+            
+            // Add click event listeners to citation markers
+            setupCitationListeners();
         }
         
         // Play audio summary
         const audioText = `Health Rating: ${data.healthRating}. ${data.healthSummary} Safety Rating: ${data.safetyRating}. ${data.safetySummary}`;
-        audioManager.playStreamedAudio(audioText);
+        if (nutritionAudioManager) {
+            nutritionAudioManager.playStreamedAudio(audioText);
+        }
     } catch (error) {
         console.error('Error analyzing food:', error);
         const resultContainer = document.getElementById('nutritionAnalysisResult');
@@ -400,7 +448,7 @@ async function analyzeNutritionFood(audioManager) {
 }
 
 // Handle nutrition chat input
-export async function handleNutritionChatInput(event, audioManager) {
+export async function handleNutritionChatInput(event) {
     if (event.key === 'Enter') {
         const input = document.getElementById('nutritionChatInput');
         const message = input.value.trim();
@@ -445,7 +493,9 @@ export async function handleNutritionChatInput(event, audioManager) {
                 updateNutritionChatDisplay();
                 
                 // Play response audio
-                audioManager.playStreamedAudio(data.response);
+                if (nutritionAudioManager) {
+                    nutritionAudioManager.playStreamedAudio(data.response);
+                }
             } catch (error) {
                 console.error('Error in chat:', error);
                 chatMessages.push({ type: 'bot', text: 'Sorry, I encountered an error. Please try again.' });
@@ -476,16 +526,160 @@ export function cleanupNutritionCamera() {
     }
 }
 
+// Show analysis overlay
+function showAnalysisOverlay() {
+    const overlay = document.getElementById('nutritionAnalysisOverlay');
+    const content = document.getElementById('nutritionAnalysisContent');
+    
+    if (overlay && content && nutritionCapturedImage) {
+        // Set initial content with loading state
+        content.innerHTML = `
+            <div style="margin-bottom: 20px;">
+                <img src="${nutritionCapturedImage}" style="width: 100%; border-radius: 8px; margin-bottom: 10px;">
+            </div>
+            <div id="nutritionAnalysisResult">
+                <div style="text-align: center; padding: 20px;">
+                    <div class="loading-dots">
+                        <span>.</span><span>.</span><span>.</span>
+                    </div>
+                    <p style="margin-top: 20px; color: #666;">Analyzing food item...</p>
+                </div>
+            </div>
+        `;
+        
+        // Show overlay
+        overlay.classList.add('active');
+    }
+}
+
+// Hide analysis overlay
+function hideAnalysisOverlay() {
+    const overlay = document.getElementById('nutritionAnalysisOverlay');
+    if (overlay) {
+        overlay.classList.remove('active');
+    }
+}
+
+// Show nutrition overlay
+function showNutritionOverlay(overlayType) {
+    closeAllNutritionOverlays();
+    const overlayId = `nutrition${overlayType.charAt(0).toUpperCase() + overlayType.slice(1)}Overlay`;
+    const overlay = document.getElementById(overlayId);
+    if (overlay) {
+        overlay.classList.add('active');
+    }
+}
+
+// Close all nutrition overlays
+function closeAllNutritionOverlays() {
+    document.querySelectorAll('.nutrition-overlay, .nutrition-analysis-overlay').forEach(overlay => {
+        overlay.classList.remove('active');
+    });
+}
+
+// Close specific nutrition overlay
+export function closeNutritionOverlay(overlayType) {
+    const overlayId = `nutrition${overlayType.charAt(0).toUpperCase() + overlayType.slice(1)}Overlay`;
+    const overlay = document.getElementById(overlayId);
+    if (overlay) {
+        overlay.classList.remove('active');
+    }
+    
+    // Re-activate "Analyze a Food Item" button
+    const analyzeButton = Array.from(document.querySelectorAll('.nutrition-module-btn'))
+        .find(btn => btn.textContent.includes('Analyze'));
+    if (analyzeButton) {
+        document.querySelectorAll('.nutrition-module-btn').forEach(btn => btn.classList.remove('active'));
+        analyzeButton.classList.add('active');
+    }
+}
+
 // Reset nutrition analysis for another photo
 export function resetNutritionAnalysis() {
     nutritionCapturedImage = null;
-    // Close the panel to return to camera view
-    closeNutritionPanel();
+    // Hide the overlay to return to camera view
+    hideAnalysisOverlay();
 }
 
 // Retry nutrition analysis
-export function retryNutritionAnalysis(audioManager) {
-    analyzeNutritionFood(audioManager);
+export function retryNutritionAnalysis() {
+    analyzeNutritionFood();
+}
+
+// Helper function to add citation tooltips to text
+function addCitationTooltips(text, citations) {
+    if (!citations || citations.length === 0) return text;
+    
+    // Create a map of citation id to citation data
+    const citationMap = {};
+    citations.forEach(citation => {
+        citationMap[citation.id] = citation;
+    });
+    
+    // Replace [n] with interactive citation markers
+    return text.replace(/\[(\d+)\]/g, (match, citationId) => {
+        const citation = citationMap[citationId];
+        if (!citation) return match;
+        
+        // Build tooltip content
+        let tooltipContent = `<strong>${citation.source}</strong><br>`;
+        tooltipContent += `${citation.context}`;
+        
+        // Add additional details based on citation type
+        if (citation.page) {
+            tooltipContent += `<br><em>Page: ${citation.page}</em>`;
+        }
+        if (citation.url) {
+            tooltipContent += `<br><a href="${citation.url}" target="_blank" rel="noopener">View Source</a>`;
+        }
+        if (citation.substance) {
+            tooltipContent += `<br><strong>Substance:</strong> ${citation.substance}`;
+        }
+        if (citation.cas_number) {
+            tooltipContent += `<br><strong>CAS:</strong> ${citation.cas_number}`;
+        }
+        if (citation.year_of_report) {
+            tooltipContent += `<br><strong>Year:</strong> ${citation.year_of_report}`;
+        }
+        
+        return `<span class="citation-marker" data-citation-id="${citationId}" tabindex="0">[${citationId}]<span class="citation-tooltip">${tooltipContent}</span></span>`;
+    });
+}
+
+// Setup event listeners for citation markers
+function setupCitationListeners() {
+    const citationMarkers = document.querySelectorAll('.citation-marker');
+    
+    citationMarkers.forEach(marker => {
+        // Click to toggle tooltip
+        marker.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const tooltip = marker.querySelector('.citation-tooltip');
+            tooltip.classList.toggle('show');
+            
+            // Hide other tooltips
+            document.querySelectorAll('.citation-tooltip.show').forEach(other => {
+                if (other !== tooltip) {
+                    other.classList.remove('show');
+                }
+            });
+        });
+        
+        // Keyboard accessibility
+        marker.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                marker.click();
+            }
+        });
+    });
+    
+    // Close tooltips when clicking elsewhere
+    document.addEventListener('click', () => {
+        document.querySelectorAll('.citation-tooltip.show').forEach(tooltip => {
+            tooltip.classList.remove('show');
+        });
+    });
 }
 
 // Initialize audio manager for nutrition module
@@ -494,8 +688,8 @@ export function setAudioManager(audioManager) {
     nutritionAudioManager = audioManager;
     
     // Update global functions to use the audio manager
-    window.analyzeNutritionFood = () => analyzeNutritionFood(audioManager);
-    window.retryNutritionAnalysis = () => retryNutritionAnalysis(audioManager);
+    window.analyzeNutritionFood = analyzeNutritionFood;
+    window.retryNutritionAnalysis = retryNutritionAnalysis;
 }
 
 // Export functions for global access
@@ -503,6 +697,7 @@ export function setupGlobalNutritionFunctions() {
     window.captureNutritionPhoto = captureNutritionPhoto;
     window.openNutritionModule = openNutritionModule;
     window.closeNutritionPanel = closeNutritionPanel;
+    window.closeNutritionOverlay = closeNutritionOverlay;
     window.clearNutritionHistory = clearNutritionHistory;
     window.fetchNutritionRecommendations = fetchNutritionRecommendations;
     window.handleNutritionChatInput = handleNutritionChatInput;

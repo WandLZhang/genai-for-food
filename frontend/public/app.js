@@ -23,7 +23,8 @@ import {
     clearNutritionHistory,
     fetchNutritionRecommendations,
     handleNutritionChatInput,
-    resetNutritionAnalysis
+    resetNutritionAnalysis,
+    handleNutritionFileUpload
 } from './modules/nutritionAssistant.js';
 
 // DOM Elements
@@ -213,7 +214,8 @@ setupGlobalNutritionFunctions();
 
 // Override global nutrition functions to include necessary parameters
 window.captureNutritionPhoto = () => captureNutritionPhoto(resizeAndCompressImage);
-window.handleNutritionChatInput = (event) => handleNutritionChatInput(event, audioManager);
+window.handleNutritionChatInput = (event) => handleNutritionChatInput(event);
+window.handleNutritionFileUpload = (file) => handleNutritionFileUpload(file, resizeAndCompressImage);
 
 // Override switchView to handle nutrition cleanup
 const originalSwitchView = switchView;

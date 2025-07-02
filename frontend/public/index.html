@@ -114,8 +114,14 @@
                 <!-- Camera View -->
                 <div class="nutrition-camera-container">
                     <video id="nutritionVideo" autoplay muted playsinline></video>
-                    <div class="nutrition-capture-text">Capture a photo of a food item using the camera button to start analysis</div>
-                    <button class="nutrition-capture-btn" onclick="window.captureNutritionPhoto()"></button>
+                    <div class="nutrition-capture-text">Capture or upload a photo of a food item to start analysis</div>
+                    <div class="nutrition-buttons-container">
+                        <button class="nutrition-capture-btn" onclick="window.captureNutritionPhoto()"></button>
+                        <label class="nutrition-upload-btn">
+                            <span class="material-icons">upload</span>
+                            <input type="file" id="nutritionFileInput" accept="image/*" style="display: none;">
+                        </label>
+                    </div>
                 </div>
 
                 <!-- Module Buttons -->
@@ -135,6 +141,58 @@
                     </div>
                     <div class="nutrition-panel-content" id="nutritionPanelContent">
                         <!-- Dynamic content goes here -->
+                    </div>
+                </div>
+
+                <!-- Analysis Overlay -->
+                <div class="nutrition-analysis-overlay" id="nutritionAnalysisOverlay">
+                    <div class="nutrition-analysis-container">
+                        <button class="nutrition-analysis-close" onclick="window.resetNutritionAnalysis()">&times;</button>
+                        <div id="nutritionAnalysisContent">
+                            <!-- Analysis content will be inserted here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Food History Overlay -->
+                <div class="nutrition-overlay" id="nutritionHistoryOverlay">
+                    <div class="nutrition-overlay-container">
+                        <button class="nutrition-overlay-close" onclick="window.closeNutritionOverlay('history')">&times;</button>
+                        <div class="nutrition-overlay-header">
+                            <div class="nutrition-overlay-title">Food History</div>
+                            <div class="nutrition-overlay-subtitle">Your recent food intake and analysis</div>
+                        </div>
+                        <div class="nutrition-overlay-content" id="nutritionHistoryContent">
+                            <!-- History content will be inserted here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recommendations Overlay -->
+                <div class="nutrition-overlay" id="nutritionRecommendationsOverlay">
+                    <div class="nutrition-overlay-container">
+                        <button class="nutrition-overlay-close" onclick="window.closeNutritionOverlay('recommendations')">&times;</button>
+                        <div class="nutrition-overlay-header">
+                            <div class="nutrition-overlay-title">Recommendations</div>
+                            <div class="nutrition-overlay-subtitle">Personalized nutrition suggestions</div>
+                        </div>
+                        <div class="nutrition-overlay-content" id="nutritionRecommendationsContent">
+                            <!-- Recommendations content will be inserted here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chat Overlay -->
+                <div class="nutrition-overlay" id="nutritionChatOverlay">
+                    <div class="nutrition-overlay-container">
+                        <button class="nutrition-overlay-close" onclick="window.closeNutritionOverlay('chat')">&times;</button>
+                        <div class="nutrition-overlay-header">
+                            <div class="nutrition-overlay-title">Food Claim Verification Chat</div>
+                            <div class="nutrition-overlay-subtitle">Ask questions about food claims and nutrition</div>
+                        </div>
+                        <div class="nutrition-overlay-content" id="nutritionChatContent">
+                            <!-- Chat content will be inserted here -->
+                        </div>
                     </div>
                 </div>
             </div>

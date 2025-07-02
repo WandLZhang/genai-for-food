@@ -231,13 +231,89 @@ This will:
 
 **Note:** The script automatically handles datastore creation. If the datastore already exists, it will use the existing one and proceed with document uploads.
 
-### 4.4. Upload Additional Documents
+### 4.4. Cloud Storage Bucket for Food Analysis Documents
 
-To upload your own documents to an existing datastore, use the `upload-rag-documents.py` script:
+The food analysis functions (function-food-analysis, function-food-recommendations, function-food-chat) require a separate Cloud Storage bucket containing FDA and dietary guideline documents. These documents provide context for health and safety analysis.
+
+#### Setup Location
+
+The nutrition RAG documents and upload script are located in:
+```
+backend/create-nutrition-rag-datastore/
+├── upload-rag-documents.py    # Upload script
+├── requirements.txt           # Python dependencies
+└── documents/                 # RAG documents
+    ├── 2024-12-16-healthyclaim-factsheet-scb-0900.pdf
+    ├── Dietary_Guidelines_for_Americans-2020-2025.pdf
+    ├── Dietary_Guidelines_for_Americans-2020-2025.txt
+    ├── FDA News Release.txt
+    ├── SCOGS-definitions.csv
+    └── SCOGS.csv
+```
+
+#### Install Dependencies
 
 ```bash
-python3 backend/upload-rag-documents.py --datastore-id YOUR_DATASTORE_ID --files "path/to/your/file1.pdf" "path/to/your/file2.txt"
+cd backend/create-nutrition-rag-datastore
+
+# Create a virtual environment (recommended)
+python3 -m venv venv
+
+# Activate the virtual environment
+source venv/bin/activate  # On macOS/Linux
+# or
+venv\Scripts\activate     # On Windows
+
+# Install dependencies
+pip install -r requirements.txt
 ```
+
+**Note:** On macOS with Homebrew-managed Python, you must use a virtual environment to install packages.
+
+#### Upload Documents to Cloud Storage
+
+The upload script supports multiple ways to specify your bucket name:
+
+**Option 1: Using default bucket name**
+```bash
+python upload-rag-documents.py
+```
+This creates/uses a bucket named `fda-genai-for-food-rag`
+
+**Option 2: Using command-line argument (recommended)**
+```bash
+python upload-rag-documents.py --bucket YOUR_BUCKET_NAME
+```
+
+**Option 3: Using environment variable**
+```bash
+RAG_BUCKET_NAME=YOUR_BUCKET_NAME python upload-rag-documents.py
+```
+
+**Additional options:**
+```bash
+# Specify bucket location (default: us)
+python upload-rag-documents.py --bucket YOUR_BUCKET_NAME --location us-central1
+
+# Use existing bucket only (fail if bucket doesn't exist)
+python upload-rag-documents.py --bucket EXISTING_BUCKET --no-create-bucket
+```
+
+#### What the Script Does
+
+The script will:
+1. Create the bucket if it doesn't exist (unless `--no-create-bucket` is specified)
+2. Upload all 6 FDA/nutrition documents to the bucket
+3. Display deployment commands with your bucket name pre-filled
+
+#### Documents Uploaded
+
+- **2024-12-16-healthyclaim-factsheet-scb-0900.pdf** - FDA healthy claim factsheet
+- **Dietary_Guidelines_for_Americans-2020-2025.pdf** - Dietary guidelines PDF
+- **Dietary_Guidelines_for_Americans-2020-2025.txt** - Dietary guidelines text version
+- **FDA News Release.txt** - FDA banned substances information
+- **SCOGS-definitions.csv** - SCOGS safety definitions
+- **SCOGS.csv** - SCOGS safety data
 
 ## 5. Backend Deployment
 
@@ -270,9 +346,14 @@ gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
 gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
   --member=serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com \
   --role=roles/discoveryengine.viewer
+
+# Grant Storage Object Viewer role for reading RAG documents from Cloud Storage
+gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
+  --member=serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com \
+  --role=roles/storage.objectViewer
 ```
 
-This step is required to allow the service account to build and deploy Cloud Functions, access Vertex AI services, read/write to Firestore, and search Discovery Engine datastores. Without these permissions, deployments will fail with build service account errors, Vertex AI access errors, Firestore permission errors, or Discovery Engine search errors.
+This step is required to allow the service account to build and deploy Cloud Functions, access Vertex AI services, read/write to Firestore, search Discovery Engine datastores, and read RAG documents from Cloud Storage. Without these permissions, deployments will fail with build service account errors, Vertex AI access errors, Firestore permission errors, Discovery Engine search errors, or Cloud Storage access errors.
 
 ### 5.2. Deploying Cloud Functions
 
@@ -304,12 +385,19 @@ cd ../..
 cd backend/function-food-analysis
 gcloud functions deploy function-food-analysis \
   --gen2 \
-  --runtime=python311 \
+  --runtime=python312 \
   --region=us-central1 \
   --source=. \
-  --entry-point=analyze_food \
+  --entry-point=analyze_food_image \
   --trigger-http \
-  --allow-unauthenticated
+  --allow-unauthenticated \
+  --timeout=3600s \
+  --memory=8Gi \
+  --cpu=6 \
+  --min-instances=1 \
+  --max-instances=100 \
+  --concurrency=1 \
+  --set-env-vars GEMINI_API_KEY=YOUR_GEMINI_API_KEY,RAG_BUCKET_NAME=YOUR_RAG_BUCKET_NAME
 cd ../..
 ```
 
@@ -323,7 +411,8 @@ gcloud functions deploy function-food-chat \
   --source=. \
   --entry-point=food_chat \
   --trigger-http \
-  --allow-unauthenticated
+  --allow-unauthenticated \
+  --set-env-vars GEMINI_API_KEY=YOUR_GEMINI_API_KEY,RAG_BUCKET_NAME=YOUR_RAG_BUCKET_NAME
 cd ../..
 ```
 
@@ -335,11 +424,14 @@ gcloud functions deploy function-food-recommendations \
   --runtime=python311 \
   --region=us-central1 \
   --source=. \
-  --entry-point=recommend_food \
+  --entry-point=get_food_recommendations \
   --trigger-http \
-  --allow-unauthenticated
+  --allow-unauthenticated \
+  --set-env-vars GEMINI_API_KEY=YOUR_GEMINI_API_KEY,RAG_BUCKET_NAME=YOUR_RAG_BUCKET_NAME
 cd ../..
 ```
+
+**Note:** The `RAG_BUCKET_NAME` should match the bucket name you created in section 4.4. Replace `YOUR_GEMINI_API_KEY` and `YOUR_RAG_BUCKET_NAME` with your actual values.
 
 **`function-image-inspection`**
 ```bash

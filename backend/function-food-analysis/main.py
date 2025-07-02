@@ -96,7 +96,7 @@ def health_rating_from_image(image_data, mime_type, user_settings, user_preferen
         contents = [types.Content(role="user", parts=[prompt_part, image_part, pdf_file_part, txt_file_part])]
         
         generate_content_config = types.GenerateContentConfig(temperature=0)
-        model = "gemini-2.5-flash-preview-05-20"
+        model = "gemini-2.5-flash"
         
         response = client.models.generate_content(
             model=model,
