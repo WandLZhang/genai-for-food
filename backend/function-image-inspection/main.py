@@ -49,9 +49,9 @@ current_processing_stage = "idle"
 processing_lock = threading.Lock()
 
 # Discovery Engine setup
-PROJECT_ID = os.environ.get('GCP_PROJECT', 'gemini-med-lit-review')
-LOCATION = "global"
-DATA_STORE_ID = "fda-title21_6"
+PROJECT_ID = os.environ.get('GCP_PROJECT', 'YOUR_PROJECT_ID')
+LOCATION = os.environ.get('DISCOVERY_ENGINE_LOCATION', 'global')
+DATA_STORE_ID = os.environ.get('DATA_STORE_ID', 'YOUR_DATASTORE_ID')
 
 client_options = ClientOptions(api_endpoint=f"{LOCATION}-discoveryengine.googleapis.com")
 search_client = discoveryengine.SearchServiceClient(client_options=client_options)
@@ -60,7 +60,7 @@ doc_client = discoveryengine.DocumentServiceClient(client_options=client_options
 # Initialize Gemini 2.5 client
 gemini_2_5_client = genai.Client(
     vertexai=True,
-    project=os.environ.get('GCP_PROJECT', 'gemini-med-lit-review'),
+    project=os.environ.get('GCP_PROJECT', 'YOUR_PROJECT_ID'),
     location="global"
 )
 

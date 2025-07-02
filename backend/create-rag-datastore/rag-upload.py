@@ -1,5 +1,6 @@
 import os
 import json
+import argparse
 from google.cloud import discoveryengine
 from google.api_core import retry, client_options
 from google.api_core.exceptions import NotFound, PermissionDenied, ResourceExhausted, AlreadyExists
@@ -130,13 +131,17 @@ class DatastoreUploader:
         return results
 
 def main():
-    project_id = "gemini-med-lit-review"
-    collection = "default_collection"
-    data_store_id = "fda-title21_6"
-    processed_documents_dir = "processed_documents"
+    parser = argparse.ArgumentParser(description='Upload processed documents to Google Cloud Discovery Engine datastore')
+    parser.add_argument('--project-id', required=True, help='GCP project ID')
+    parser.add_argument('--collection', default='default_collection', help='Collection name (default: default_collection)')
+    parser.add_argument('--datastore-id', required=True, help='Datastore ID')
+    parser.add_argument('--documents-dir', default='processed_documents', help='Directory containing processed JSON documents (default: processed_documents)')
+    parser.add_argument('--max-workers', type=int, default=5, help='Maximum number of concurrent uploads (default: 5)')
+    
+    args = parser.parse_args()
 
-    uploader = DatastoreUploader(project_id, collection, data_store_id)
-    results = uploader.upload_documents(processed_documents_dir)
+    uploader = DatastoreUploader(args.project_id, args.collection, args.datastore_id)
+    results = uploader.upload_documents(args.documents_dir, max_workers=args.max_workers)
 
     print("\nUpload Results:")
     for result in results:

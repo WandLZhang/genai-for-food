@@ -216,7 +216,7 @@ export async function processInspection(audioManager) {
         let summary = '';
 
         // Send the POST request first to start the analysis
-        const postPromise = fetch('https://us-central1-gemini-med-lit-review.cloudfunctions.net/process-inspection', {
+        const postPromise = fetch('https://us-central1-fda-genai-for-food.cloudfunctions.net/function-image-inspection', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -228,7 +228,7 @@ export async function processInspection(audioManager) {
         });
 
         // Start streaming status updates simultaneously
-        const streamUrl = 'https://us-central1-gemini-med-lit-review.cloudfunctions.net/process-inspection/stream';
+        const streamUrl = 'https://us-central1-fda-genai-for-food.cloudfunctions.net/function-image-inspection/stream';
         const analysisStream = new EventSource(streamUrl);
 
         // Handle streaming events

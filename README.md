@@ -125,11 +125,99 @@ cp frontend/.env.example frontend/.env
 ```
 And populate it with your API keys.
 
-## 4. Backend Deployment
+## 4. RAG Datastore Setup
+
+The application uses a RAG (Retrieval-Augmented Generation) datastore for providing context to the chat function. Setting up the datastore involves two steps: chunking the XML source documents and then uploading them to Google Cloud Discovery Engine.
+
+### 4.1. Install Dependencies
+
+First, create a virtual environment and install the required Python packages:
+
+```bash
+cd backend/create-rag-datastore
+
+# Create virtual environment
+python3 -m venv venv
+
+# Activate virtual environment
+source venv/bin/activate
+
+# Install dependencies
+pip3 install -r requirements.txt
+```
+
+### 4.2. Process XML Documents
+
+With the virtual environment still activated, chunk the XML source file (`title21.xml`) into individual JSON documents:
+
+```bash
+# Make sure you're still in backend/create-rag-datastore with venv activated
+python3 xml_chunker.py
+```
+
+This will:
+- Parse the `title21.xml` file containing FDA regulations
+- Extract individual sections from the XML structure
+- Create a `processed_documents` directory
+- Generate JSON files for each section with structured metadata (id, section_id, section_name, content)
+
+### 4.3. Create Datastore and Upload Documents
+
+After processing the XML, upload the documents to Google Cloud Discovery Engine (ensure your virtual environment is still activated):
+
+```bash
+python3 rag-upload.py \
+  --project-id YOUR_PROJECT_ID \
+  --datastore-id YOUR_DATASTORE_ID
+```
+
+Required parameters:
+- `--project-id`: Your GCP project ID
+- `--datastore-id`: The ID for your datastore (e.g., `fda-title21_v1`)
+
+Optional parameters:
+- `--collection`: Collection name (default: `default_collection`)
+- `--documents-dir`: Directory containing JSON documents (default: `processed_documents`)
+- `--max-workers`: Maximum concurrent uploads (default: 5)
+
+Example with all parameters:
+```bash
+python3 rag-upload.py \
+  --project-id my-gcp-project \
+  --collection default_collection \
+  --datastore-id fda-regulations-v1 \
+  --documents-dir processed_documents \
+  --max-workers 10
+```
+
+When you're done, deactivate the virtual environment:
+```bash
+deactivate
+cd ../..
+```
+
+This will:
+- Create a new Discovery Engine datastore if it doesn't exist (or use existing if already created)
+- Upload all JSON documents from the specified directory
+- Verify each document after upload
+- Provide progress updates and verification results
+
+**Note:** The script automatically handles datastore creation. If the datastore already exists, it will use the existing one and proceed with document uploads.
+
+### 4.4. Upload Additional Documents
+
+To upload your own documents to an existing datastore, use the `upload-rag-documents.py` script:
+
+```bash
+python3 backend/upload-rag-documents.py --datastore-id YOUR_DATASTORE_ID --files "path/to/your/file1.pdf" "path/to/your/file2.txt"
+```
+
+## 5. Backend Deployment
+## 5. Backend Deployment
 
 The backend consists of several Python Cloud Functions.
 
-### 4.1. Configure IAM Permissions
+### 5.1. Configure IAM Permissions
 
 Before deploying Cloud Functions, you need to grant the necessary permissions to the Cloud Build service account:
 
@@ -150,7 +238,7 @@ gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
 
 This step is required to allow the service account to build and deploy Cloud Functions, and to access Vertex AI services. Without these permissions, deployments will fail with a build service account error or Vertex AI access error.
 
-### 4.2. Deploying Cloud Functions
+### 5.2. Deploying Cloud Functions
 
 Deploy each function from its respective directory.
 
@@ -222,15 +310,23 @@ cd ../..
 cd backend/function-image-inspection
 gcloud functions deploy function-image-inspection \
   --gen2 \
-  --runtime=python311 \
+  --runtime=python312 \
   --region=us-central1 \
   --source=. \
   --entry-point=process_inspection \
   --trigger-http \
   --allow-unauthenticated \
-  --set-env-vars GCP_PROJECT=YOUR_PROJECT_ID
+  --timeout=3600s \
+  --memory=8Gi \
+  --cpu=6 \
+  --min-instances=1 \
+  --max-instances=100 \
+  --concurrency=1 \
+  --set-env-vars GCP_PROJECT=YOUR_PROJECT_ID,DATA_STORE_ID=YOUR_DATASTORE_ID
 cd ../..
 ```
+
+**Note:** The `DATA_STORE_ID` should match the datastore ID you created in section 4.3 (RAG Datastore Setup). For example, if you created a datastore with ID `ecfr-title-21`, use that value here.
 
 **`function-site-check`**
 ```bash
@@ -273,11 +369,11 @@ gcloud functions deploy function-get-map \
 cd ../..
 ```
 
-## 5. Update Frontend with Backend Endpoints
+## 6. Update Frontend with Backend Endpoints
 
 After deploying the Cloud Functions, you need to update the frontend to use the correct endpoints.
 
-### 5.1. Automated Update Script
+### 6.1. Automated Update Script
 
 Copy and run this script to automatically update all backend endpoints in your frontend:
 
@@ -309,7 +405,7 @@ echo "All endpoints updated!"
 
 **Note for Linux users:** Remove the empty quotes after `-i` in the sed commands (use `sed -i` instead of `sed -i ''`).
 
-### 5.2. Verify Function URLs (Optional)
+### 6.2. Verify Function URLs (Optional)
 
 If you want to verify your deployed function URLs, run:
 
@@ -320,26 +416,6 @@ for func in function-audio-output function-food-analysis function-food-chat func
   gcloud functions describe $func --region=us-central1 --format="value(serviceConfig.uri)" 2>/dev/null || echo "Not deployed"
   echo ""
 done
-```
-
-## 6. RAG Datastore Setup
-
-The application uses a RAG datastore for providing context to the chat function.
-
-### 5.1. Create the Datastore
-
-Run the `create-rag-datastore/rag-upload.py` script to create the datastore and upload the initial documents.
-
-```bash
-python3 backend/create-rag-datastore/rag-upload.py
-```
-
-### 5.2. Upload Additional Documents
-
-To upload your own documents to the datastore, use the `upload-rag-documents.py` script.
-
-```bash
-python3 backend/upload-rag-documents.py --datastore-id YOUR_DATASTORE_ID --files "path/to/your/file1.pdf" "path/to/your/file2.txt"
 ```
 
 ## 7. Frontend Deployment

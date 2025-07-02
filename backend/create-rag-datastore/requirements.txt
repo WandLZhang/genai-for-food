@@ -1,0 +1,2 @@
+google-cloud-discoveryengine==0.13.9
+tqdm==4.66.1
