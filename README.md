@@ -126,6 +126,32 @@ cp frontend/.env.example frontend/.env
 ```
 And populate it with your API keys.
 
+### 3.4. Create Firestore Database
+
+The application uses Firestore for storing inspection job data and streaming updates. You need to create a Firestore database before deploying the backend:
+
+1. **Go to the Firebase Console**:
+   - Navigate to [Firebase Console](https://console.firebase.google.com/)
+   - Select your project
+
+2. **Create Firestore Database**:
+   - In the left sidebar, click on "Firestore Database"
+   - Click "Create database"
+
+3. **Configure Database Settings**:
+   - **Choose mode**: Select "Start in production mode" (Firestore Native)
+   - **Security rules**: Choose "Start in production mode" (restrictive rules)
+     - This is fine since only your Cloud Functions will access Firestore, not client apps
+   - **Location**: 
+     - For US-based projects: Select "nam5 (United States)" multi-region
+     - This provides 99.999% availability and aligns with your Cloud Functions in us-central1
+
+4. **Complete Setup**:
+   - Click "Create" to provision your Firestore database
+   - The database will be ready in a few moments
+
+**Note**: You only need to create the Firestore database once per project. The Cloud Functions will automatically create the necessary collections (`inspection_jobs`) when they first run.
+
 ## 4. RAG Datastore Setup
 
 The application uses a RAG (Retrieval-Augmented Generation) datastore for providing context to the chat function. Setting up the datastore involves two steps: chunking the XML source documents and then uploading them to Google Cloud Discovery Engine.

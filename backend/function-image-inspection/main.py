@@ -100,10 +100,11 @@ def add_event_to_job(job_id, event_type, content=None, data=None):
     logger.info(f"Added event to job {job_id}: {event_type}")
 
 def update_job_result(job_id, result, status='completed'):
-    """Update the job with final results"""
+    """Update the job status only (results are streamed, not stored)"""
     job_ref = db.collection('inspection_jobs').document(job_id)
+    # Only update status and timestamp, not the actual results
+    # This avoids Firestore's 1MB document size limit
     job_ref.update({
-        'result': result,
         'status': status,
         'completed_at': firestore.SERVER_TIMESTAMP
     })
@@ -603,9 +604,7 @@ def generate_status_stream(job_id):
             
             # Check if job is completed or errored
             if current_status in ['completed', 'error']:
-                if current_status != last_status and job_data.get('result'):
-                    # Send final result if not already sent
-                    yield f"data: {json.dumps({'type': 'result', 'data': job_data['result']})}\n\n"
+                # Job is done, close the stream
                 break
             
             last_status = current_status
