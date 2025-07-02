@@ -677,8 +677,8 @@ select[multiple] option {
   z-index: 90;
 }
 
-#menuButton:hover ~ #menuPanel,
-#menuPanel:hover {
+/* JavaScript controlled state for mobile */
+#menuPanel.menu-open {
   transform: translateX(0);
 }
 
@@ -1079,6 +1079,11 @@ button.control-button {
   #menuPanel {
     width: 240px;
     transform: translateX(-220px);
+  }
+  
+  /* JavaScript controlled state on mobile */
+  #menuPanel.menu-open {
+    transform: translateX(0);
   }
   
   .controls-container {

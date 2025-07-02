@@ -56,6 +56,25 @@ let isRecording = false;
 let currentView = null;
 let recognition = null;
 
+// Menu Control Functions
+function openMenu() {
+    menuPanel.classList.add('menu-open');
+    isMenuOpen = true;
+}
+
+function closeMenu() {
+    menuPanel.classList.remove('menu-open');
+    isMenuOpen = false;
+}
+
+function toggleMenu() {
+    if (isMenuOpen) {
+        closeMenu();
+    } else {
+        openMenu();
+    }
+}
+
 // Initialize Speech Recognition
 if ('webkitSpeechRecognition' in window) {
     recognition = new webkitSpeechRecognition();
@@ -106,7 +125,22 @@ menuItems.forEach(item => {
         e.preventDefault();
         const view = e.target.dataset.view;
         switchView(view);
+        // Close the menu after selecting an item
+        closeMenu();
     });
+});
+
+// Menu button click handler
+menuButton.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleMenu();
+});
+
+// Close menu when clicking outside
+document.addEventListener('click', (e) => {
+    if (isMenuOpen && !menuPanel.contains(e.target) && !menuButton.contains(e.target)) {
+        closeMenu();
+    }
 });
 
 function switchView(view) {
