@@ -114,15 +114,15 @@
                 <!-- Camera View -->
                 <div class="nutrition-camera-container">
                     <video id="nutritionVideo" autoplay muted playsinline></video>
-                    <div class="nutrition-camera-overlay"></div>
+                    <div class="nutrition-capture-text">Capture a photo of a food item using the camera button to start analysis</div>
                     <button class="nutrition-capture-btn" onclick="window.captureNutritionPhoto()"></button>
                 </div>
 
                 <!-- Module Buttons -->
                 <div class="nutrition-modules-panel">
+                    <button class="nutrition-module-btn" onclick="window.openNutritionModule('analyze')">🔍 Analyze a Food Item</button>
                     <button class="nutrition-module-btn" onclick="window.openNutritionModule('history')">📚 Food History</button>
                     <button class="nutrition-module-btn" onclick="window.openNutritionModule('recommendations')">⭐ Recommendations</button>
-                    <button class="nutrition-module-btn" onclick="window.openNutritionModule('analyze')">🔍 Analyze a Food Item</button>
                     <button class="nutrition-module-btn" onclick="window.openNutritionModule('chat')">💬 Food Claim Verification Chat</button>
                 </div>
 

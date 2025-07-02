@@ -21,6 +21,15 @@ export async function initNutritionCamera() {
         nutritionVideo.style.background = '#333';
         nutritionVideo.innerHTML = '<div style="color: white; text-align: center; padding-top: 45%; font-size: 18px;">Camera not available</div>';
     }
+    
+    // Set "Analyze a Food Item" as active by default
+    setTimeout(() => {
+        const analyzeButton = Array.from(document.querySelectorAll('.nutrition-module-btn'))
+            .find(btn => btn.textContent.includes('Analyze'));
+        if (analyzeButton) {
+            analyzeButton.classList.add('active');
+        }
+    }, 100);
 }
 
 // Capture nutrition photo
@@ -67,8 +76,16 @@ export async function captureNutritionPhoto(resizeAndCompressImage) {
             setTimeout(() => document.body.removeChild(overlay), 300);
         }, 150);
         
-        // Automatically open analyze module
-        openNutritionModule('analyze');
+        // Open the analyze panel with results
+        const panel = document.getElementById('nutritionContentPanel');
+        const title = document.getElementById('nutritionPanelTitle');
+        const subtitle = document.getElementById('nutritionPanelSubtitle');
+        const content = document.getElementById('nutritionPanelContent');
+        
+        title.textContent = 'Analyze a Food Item';
+        subtitle.textContent = 'Get detailed nutrition information';
+        content.innerHTML = generateNutritionAnalyzeContent();
+        panel.classList.add('active');
         
         // Start analysis
         analyzeNutritionFood();
@@ -87,7 +104,24 @@ export function openNutritionModule(moduleName) {
     
     // Remove active class from all buttons
     document.querySelectorAll('.nutrition-module-btn').forEach(btn => btn.classList.remove('active'));
-    event.target.classList.add('active');
+    
+    // Find and activate the clicked button
+    const buttons = document.querySelectorAll('.nutrition-module-btn');
+    buttons.forEach(btn => {
+        if (btn.textContent.includes('Analyze') && moduleName === 'analyze' ||
+            btn.textContent.includes('History') && moduleName === 'history' ||
+            btn.textContent.includes('Recommendations') && moduleName === 'recommendations' ||
+            btn.textContent.includes('Chat') && moduleName === 'chat') {
+            btn.classList.add('active');
+        }
+    });
+    
+    // For analyze module, just update the active state without opening panel
+    if (moduleName === 'analyze') {
+        // Close panel if it's open
+        panel.classList.remove('active');
+        return;
+    }
     
     switch(moduleName) {
         case 'history':
@@ -104,11 +138,6 @@ export function openNutritionModule(moduleName) {
                 fetchNutritionRecommendations();
             }
             break;
-        case 'analyze':
-            title.textContent = 'Analyze a Food Item';
-            subtitle.textContent = 'Get detailed nutrition information';
-            content.innerHTML = generateNutritionAnalyzeContent();
-            break;
         case 'chat':
             title.textContent = 'Food Claim Verification Chat';
             subtitle.textContent = 'Ask questions about food claims and nutrition';
@@ -122,7 +151,14 @@ export function openNutritionModule(moduleName) {
 // Close nutrition panel
 export function closeNutritionPanel() {
     document.getElementById('nutritionContentPanel').classList.remove('active');
-    document.querySelectorAll('.nutrition-module-btn').forEach(btn => btn.classList.remove('active'));
+    
+    // Re-activate "Analyze a Food Item" button when closing panel
+    const analyzeButton = Array.from(document.querySelectorAll('.nutrition-module-btn'))
+        .find(btn => btn.textContent.includes('Analyze'));
+    if (analyzeButton) {
+        document.querySelectorAll('.nutrition-module-btn').forEach(btn => btn.classList.remove('active'));
+        analyzeButton.classList.add('active');
+    }
 }
 
 // Generate content functions
@@ -443,7 +479,8 @@ export function cleanupNutritionCamera() {
 // Reset nutrition analysis for another photo
 export function resetNutritionAnalysis() {
     nutritionCapturedImage = null;
-    openNutritionModule('analyze');
+    // Close the panel to return to camera view
+    closeNutritionPanel();
 }
 
 // Retry nutrition analysis
