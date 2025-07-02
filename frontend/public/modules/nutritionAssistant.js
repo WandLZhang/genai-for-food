@@ -2,7 +2,49 @@
 
 let nutritionMediaStream = null;
 let nutritionCapturedImage = null;
-let foodHistory = JSON.parse(localStorage.getItem('foodHistory') || '[]');
+
+// Initialize food history with example items like the original app
+let foodHistory = JSON.parse(localStorage.getItem('foodHistory') || JSON.stringify([
+    { 
+        text: 'Large pepperoni pizza with soda', 
+        colorClass: 'bg-red-200 text-red-800',
+        explanation: 'This meal is high in saturated fat and sodium, which can contribute to cardiovascular issues [1]. The soda is a source of empty calories and added sugars [2].',
+        citations: [
+            { id: 1, source: 'Dietary Guidelines for Americans', context: 'Limit saturated fat to less than 10 percent of calories per day.', page: 'Page 45', url: 'https://www.dietaryguidelines.gov/sites/default/files/2021-03/Dietary_Guidelines_for_Americans-2020-2025.pdf' },
+            { id: 2, source: 'Dietary Guidelines for Americans', context: 'Limit added sugars to less than 10 percent of calories per day.', page: 'Page 47', url: 'https://www.dietaryguidelines.gov/sites/default/files/2021-03/Dietary_Guidelines_for_Americans-2020-2025.pdf' }
+        ],
+        date: new Date('2024-06-09T19:38:00').toISOString()
+    },
+    { 
+        text: 'Grilled chicken salad with mixed vegetables', 
+        colorClass: 'bg-green-100 text-green-800',
+        explanation: 'A balanced meal with lean protein, fiber, and vitamins. Grilled chicken is a healthier choice than fried [1].',
+        citations: [
+            { id: 1, source: 'Dietary Guidelines for Americans', context: 'Choose lean protein sources.', page: 'Page 42', url: 'https://www.dietaryguidelines.gov/sites/default/files/2021-03/Dietary_Guidelines_for_Americans-2020-2025.pdf' }
+        ],
+        date: new Date('2024-06-09T14:38:00').toISOString()
+    },
+    { 
+        text: 'Chocolate chip cookies (3 pieces)', 
+        colorClass: 'bg-yellow-100 text-yellow-800',
+        explanation: 'Contains high amounts of added sugars and refined flour [1].',
+        citations: [
+            { id: 1, source: 'Dietary Guidelines for Americans', context: 'Limit foods high in added sugars.', page: 'Page 47', url: 'https://www.dietaryguidelines.gov/sites/default/files/2021-03/Dietary_Guidelines_for_Americans-2020-2025.pdf' }
+        ],
+        date: new Date('2024-06-09T10:38:00').toISOString()
+    },
+    { 
+        text: 'Greek yogurt with berries and granola', 
+        colorClass: 'bg-green-100 text-green-800',
+        explanation: 'A nutrient-dense breakfast with protein, calcium, and antioxidants from berries [1]. Granola can be high in sugar, so portion control is important [2].',
+        citations: [
+            { id: 1, source: 'Dietary Guidelines for Americans', context: 'Choose nutrient-dense foods.', page: 'Page 31', url: 'https://www.dietaryguidelines.gov/sites/default/files/2021-03/Dietary_Guidelines_for_Americans-2020-2025.pdf' },
+            { id: 2, source: 'Dietary Guidelines for Americans', context: 'Be mindful of portion sizes for high-calorie foods.', page: 'Page 55', url: 'https://www.dietaryguidelines.gov/sites/default/files/2021-03/Dietary_Guidelines_for_Americans-2020-2025.pdf' }
+        ],
+        date: new Date('2024-06-09T07:38:00').toISOString()
+    }
+]));
+
 let chatMessages = [
     { type: 'bot', text: "Hi! I'm here to help verify food claims and answer nutrition questions. What would you like to know?" }
 ];
@@ -218,18 +260,98 @@ export function closeNutritionPanel() {
 function generateNutritionHistoryContent() {
     return `
         <div style="margin-bottom: 20px;">
-            <h3 style="margin-bottom: 15px; color: #333;">Recent Food Items</h3>
-            ${foodHistory.length ? foodHistory.map(item => `
-                <div class="nutrition-food-item">
-                    <h3>${item.name}</h3>
-                    <p><strong>Date:</strong> ${new Date(item.date).toLocaleString()}</p>
-                    <p><strong>Health Rating:</strong> <span style="color: ${item.healthRating === 'Healthy' ? '#4CAF50' : '#f44336'}">${item.healthRating}</span></p>
-                    <p><strong>Safety Rating:</strong> <span style="color: ${item.safetyRating === 'Safe' ? '#4CAF50' : '#f44336'}">${item.safetyRating}</span></p>
-                </div>
-            `).join('') : '<p style="color: #666;">No food history yet. Start by analyzing some food items!</p>'}
+            <div style="display: flex; justify-content: flex-end; margin-bottom: 15px;">
+                <button id="addFoodBtn" onclick="window.openAddFoodModal()" style="background: none; border: none; cursor: pointer; padding: 4px; border-radius: 50%; transition: background 0.2s;" onmouseover="this.style.background='#e0e0e0'" onmouseout="this.style.background='none'">
+                    <svg style="width: 24px; height: 24px; color: #2196F3;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+            </div>
+            <div id="foodHistoryContainer" style="max-height: 400px; overflow-y: auto;">
+                ${renderFoodHistoryItems()}
+            </div>
         </div>
-        <button class="nutrition-analyze-btn" onclick="window.clearNutritionHistory()">Clear History</button>
+        ${foodHistory.length > 0 ? '<button class="nutrition-analyze-btn" onclick="window.clearNutritionHistory()">Clear History</button>' : ''}
     `;
+}
+
+// Helper function to render food history items with expandable explanations
+function renderFoodHistoryItems() {
+    if (foodHistory.length === 0) {
+        return '<p style="color: #666;">No food history yet. Start by analyzing some food items!</p>';
+    }
+    
+    return foodHistory.map((item, index) => {
+        // Handle backward compatibility for items with old structure
+        let displayText = item.text;
+        let colorClass = item.colorClass || 'bg-gray-100 text-gray-800';
+        let explanation = item.explanation || '';
+        let citations = item.citations || [];
+        
+        // If item has old structure (name, healthRating, etc.), convert it
+        if (!item.text && item.name) {
+            const date = new Date(item.date);
+            const formattedTime = date.toLocaleString('en-US', { 
+                weekday: 'short', 
+                month: 'short', 
+                day: 'numeric', 
+                hour: 'numeric', 
+                minute: '2-digit', 
+                hour12: true 
+            });
+            displayText = `<strong>${formattedTime}:</strong> ${item.name}`;
+            
+            // Determine color based on health rating
+            if (item.healthRating === 'Healthy') {
+                colorClass = 'bg-green-100 text-green-800';
+            } else if (item.healthRating === 'Unhealthy') {
+                colorClass = 'bg-red-200 text-red-800';
+            }
+            
+            // Combine health and safety summaries
+            explanation = `Health: ${item.healthSummary || 'No health summary'} Safety: ${item.safetySummary || 'No safety summary'}`;
+        }
+        
+        // Format the date for better readability
+        const date = new Date(item.date);
+        const dateFormatted = date.toLocaleDateString('en-US', { 
+            weekday: 'short', 
+            month: 'short', 
+            day: 'numeric'
+        });
+        const timeFormatted = date.toLocaleTimeString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+        });
+        
+        // Extract just the food item text (remove bold tags from old format)
+        const foodItemText = displayText.replace(/<strong>.*?<\/strong>\s*/, '');
+        
+        return `
+            <div class="history-item-container" style="margin-bottom: 8px;">
+                <div class="${colorClass} history-item" style="padding: 12px; border-radius: 8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div style="flex: 1;">
+                            <span class="food-history-date">${dateFormatted} • ${timeFormatted}</span>
+                            <div class="food-history-item-text">${foodItemText}</div>
+                        </div>
+                        <div style="flex-shrink: 0; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: rgba(0,0,0,0.1); cursor: pointer; transition: background 0.2s; margin-left: 12px;" 
+                             onclick="window.toggleNutritionExplanation(${index})"
+                             onmouseover="this.style.background='rgba(0,0,0,0.2)'" 
+                             onmouseout="this.style.background='rgba(0,0,0,0.1)'">
+                            <svg style="width: 20px; height: 20px; color: #666;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+                <div id="nutrition-explanation-${index}" class="explanation-content" style="padding: 12px; margin-top: 4px; border-radius: 8px; background: #f5f5f5; border: 1px solid #e0e0e0; display: none;">
+                    <!-- Explanation will be inserted here when toggled -->
+                </div>
+            </div>
+        `;
+    }).join('');
 }
 
 function generateNutritionRecommendationsContent() {
@@ -692,6 +814,288 @@ export function setAudioManager(audioManager) {
     window.retryNutritionAnalysis = retryNutritionAnalysis;
 }
 
+// Toggle nutrition explanation
+export function toggleNutritionExplanation(index) {
+    const explanationDiv = document.getElementById(`nutrition-explanation-${index}`);
+    const item = foodHistory[index];
+    
+    if (explanationDiv) {
+        if (explanationDiv.style.display === 'none' || !explanationDiv.innerHTML) {
+            // Format explanation with citations
+            const formattedText = formatTextWithCitations(item.explanation, item.citations);
+            explanationDiv.innerHTML = formattedText;
+            explanationDiv.style.display = 'block';
+            
+            // Set up citation tooltips after DOM update
+            setTimeout(() => {
+                attachCitationTooltips(explanationDiv, item.citations);
+            }, 0);
+        } else {
+            explanationDiv.style.display = 'none';
+        }
+    }
+}
+
+// Format text with citations (similar to original app)
+function formatTextWithCitations(text, citations) {
+    if (!citations || citations.length === 0) return text;
+    
+    let formattedText = text;
+    
+    // Replace citation markers [1], [2], etc. with styled spans
+    citations.forEach(citation => {
+        const citationRegex = new RegExp(`\\[${citation.id}\\]`, 'g');
+        formattedText = formattedText.replace(citationRegex, 
+            `<span class="citation-marker" data-citation-id="${citation.id}" style="color: #1976d2; font-weight: 600; cursor: pointer;">[${citation.id}]</span>`
+        );
+    });
+    
+    return formattedText;
+}
+
+// Attach citation tooltips
+function attachCitationTooltips(containerElement, citations) {
+    const citationMarkers = containerElement.querySelectorAll('.citation-marker');
+    
+    citationMarkers.forEach(marker => {
+        const citationId = parseInt(marker.dataset.citationId);
+        const citation = citations.find(c => c.id === citationId);
+        
+        if (citation) {
+            // Create tooltip on hover/click
+            marker.addEventListener('click', (e) => {
+                e.stopPropagation();
+                
+                // Remove any existing tooltips
+                document.querySelectorAll('.nutrition-citation-tooltip').forEach(t => t.remove());
+                
+                // Create new tooltip
+                const tooltip = document.createElement('div');
+                tooltip.className = 'nutrition-citation-tooltip';
+                tooltip.style.cssText = `
+                    position: absolute;
+                    background: white;
+                    border: 1px solid #ddd;
+                    border-radius: 8px;
+                    padding: 12px;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                    max-width: 300px;
+                    z-index: 1000;
+                    font-size: 13px;
+                    line-height: 1.5;
+                `;
+                
+                // Build tooltip content with proper formatting
+                let tooltipContent = `<div style="margin-bottom: 8px;"><strong>${citation.source}</strong></div>`;
+                tooltipContent += `<div style="margin-bottom: 8px; font-style: italic; color: #555;">"${citation.context}"</div>`;
+                
+                if (citation.page) {
+                    tooltipContent += `<div style="margin-bottom: 8px; color: #666; font-size: 12px;">${citation.page}</div>`;
+                }
+                
+                // Add URL if available or determine based on source
+                let url = citation.url;
+                if (!url && citation.source) {
+                    // Auto-determine URL based on source name
+                    if (citation.source.includes('Dietary Guidelines')) {
+                        url = 'https://www.dietaryguidelines.gov/sites/default/files/2021-03/Dietary_Guidelines_for_Americans-2020-2025.pdf';
+                    } else if (citation.source.includes('FDA') && citation.source.includes('Claim')) {
+                        url = 'https://www.fda.gov/media/184535/download';
+                    }
+                }
+                
+                if (url) {
+                    tooltipContent += `<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #eee;">
+                        <a href="${url}" target="_blank" rel="noopener" style="color: #1976d2; text-decoration: none; font-size: 12px; display: inline-flex; align-items: center;">
+                            View Source Document
+                            <svg style="width: 12px; height: 12px; margin-left: 4px;" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z"></path>
+                                <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"></path>
+                            </svg>
+                        </a>
+                    </div>`;
+                }
+                
+                tooltip.innerHTML = tooltipContent;
+                document.body.appendChild(tooltip);
+                
+                // Position tooltip
+                const rect = marker.getBoundingClientRect();
+                tooltip.style.left = rect.left + 'px';
+                tooltip.style.top = (rect.bottom + 5) + 'px';
+                
+                // Adjust if tooltip goes off screen
+                const tooltipRect = tooltip.getBoundingClientRect();
+                if (tooltipRect.right > window.innerWidth) {
+                    tooltip.style.left = (window.innerWidth - tooltipRect.width - 10) + 'px';
+                }
+                if (tooltipRect.bottom > window.innerHeight) {
+                    tooltip.style.top = (rect.top - tooltipRect.height - 5) + 'px';
+                }
+                
+                // Remove tooltip on click outside
+                setTimeout(() => {
+                    document.addEventListener('click', function removeTooltip() {
+                        tooltip.remove();
+                        document.removeEventListener('click', removeTooltip);
+                    });
+                }, 0);
+            });
+        }
+    });
+}
+
+// Open add food modal
+export function openAddFoodModal() {
+    // Create modal HTML
+    const modalHtml = `
+        <div id="nutritionAddFoodModal" style="position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.5);">
+            <div style="background: white; border-radius: 12px; width: 90%; max-width: 500px; margin: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 20px; border-bottom: 1px solid #e0e0e0;">
+                    <h3 style="margin: 0; font-size: 20px; font-weight: 600;">Add Food Entry</h3>
+                    <button onclick="window.closeAddFoodModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #666;">&times;</button>
+                </div>
+                <div style="padding: 20px;">
+                    <div style="margin-bottom: 16px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">Time</label>
+                        <input type="datetime-local" id="nutritionFoodTime" style="width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">Item Consumed</label>
+                        <input type="text" id="nutritionFoodItem" placeholder="e.g., Grilled chicken salad" style="width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px;">
+                    </div>
+                </div>
+                <div style="display: flex; justify-content: flex-end; padding: 20px; background: #f5f5f5; border-top: 1px solid #e0e0e0; border-radius: 0 0 12px 12px;">
+                    <button onclick="window.saveFoodEntry()" style="background: #1976d2; color: white; border: none; padding: 10px 24px; border-radius: 8px; font-size: 16px; cursor: pointer;">Save Entry</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Add modal to body
+    const modalDiv = document.createElement('div');
+    modalDiv.innerHTML = modalHtml;
+    document.body.appendChild(modalDiv);
+    
+    // Set default date/time to now
+    const now = new Date();
+    const dateTimeLocal = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    document.getElementById('nutritionFoodTime').value = dateTimeLocal;
+}
+
+// Close add food modal
+export function closeAddFoodModal() {
+    const modal = document.getElementById('nutritionAddFoodModal');
+    if (modal) {
+        modal.parentElement.remove();
+    }
+}
+
+// Save food entry
+export async function saveFoodEntry() {
+    const timeInput = document.getElementById('nutritionFoodTime').value;
+    const itemInput = document.getElementById('nutritionFoodItem').value;
+    
+    if (!timeInput || !itemInput) {
+        alert('Please fill out both time and item fields.');
+        return;
+    }
+    
+    // Close modal
+    closeAddFoodModal();
+    
+    // Show loading overlay
+    const loadingOverlay = document.createElement('div');
+    loadingOverlay.id = 'nutritionLoadingOverlay';
+    loadingOverlay.style.cssText = `
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+    `;
+    loadingOverlay.innerHTML = `
+        <div style="background: white; padding: 24px; border-radius: 12px; text-align: center;">
+            <div class="loading-dots">
+                <span>.</span><span>.</span><span>.</span>
+            </div>
+            <p style="margin-top: 16px;">Evaluating Food Health...</p>
+        </div>
+    `;
+    document.body.appendChild(loadingOverlay);
+    
+    try {
+        // Get user settings
+        const userSettings = localStorage.getItem('userSettings') || 'General health-conscious individual';
+        const userPreferences = localStorage.getItem('userPreferences') || 'No specific dietary restrictions';
+        
+        // Call health analysis endpoint
+        const response = await fetch('https://us-central1-fda-genai-for-food.cloudfunctions.net/analyze-food-text', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                description: itemInput,
+                user_settings: userSettings,
+                user_preferences: userPreferences
+            })
+        });
+        
+        if (!response.ok) throw new Error('Failed to analyze food');
+        
+        const data = await response.json();
+        
+        // Format date
+        const date = new Date(timeInput);
+        const formattedTime = date.toLocaleString('en-US', { 
+            weekday: 'short', 
+            month: 'short', 
+            day: 'numeric', 
+            hour: 'numeric', 
+            minute: '2-digit', 
+            hour12: true 
+        });
+        
+        // Determine color class based on rating
+        let colorClass = 'bg-gray-100 text-gray-800';
+        if (data.rating === 'Healthy') {
+            colorClass = 'bg-green-100 text-green-800';
+        } else if (data.rating === 'Moderate') {
+            colorClass = 'bg-yellow-100 text-yellow-800';
+        } else if (data.rating === 'Unhealthy') {
+            colorClass = 'bg-red-200 text-red-800';
+        }
+        
+        // Add to history (store just the food item text, date formatting happens on render)
+        const newEntry = {
+            text: itemInput,
+            colorClass: colorClass,
+            explanation: data.explanation || 'No explanation provided.',
+            citations: data.citations || [],
+            date: date.toISOString()
+        };
+        
+        foodHistory.unshift(newEntry);
+        localStorage.setItem('foodHistory', JSON.stringify(foodHistory));
+        
+        // Update UI
+        const historyContent = document.getElementById('nutritionHistoryContent');
+        if (historyContent) {
+            historyContent.innerHTML = generateNutritionHistoryContent();
+        }
+        
+    } catch (error) {
+        console.error('Error analyzing food:', error);
+        alert('Failed to analyze food item. Please try again.');
+    } finally {
+        // Remove loading overlay
+        document.getElementById('nutritionLoadingOverlay')?.remove();
+    }
+}
+
 // Export functions for global access
 export function setupGlobalNutritionFunctions() {
     window.captureNutritionPhoto = captureNutritionPhoto;
@@ -702,4 +1106,8 @@ export function setupGlobalNutritionFunctions() {
     window.fetchNutritionRecommendations = fetchNutritionRecommendations;
     window.handleNutritionChatInput = handleNutritionChatInput;
     window.resetNutritionAnalysis = resetNutritionAnalysis;
+    window.toggleNutritionExplanation = toggleNutritionExplanation;
+    window.openAddFoodModal = openAddFoodModal;
+    window.closeAddFoodModal = closeAddFoodModal;
+    window.saveFoodEntry = saveFoodEntry;
 }
