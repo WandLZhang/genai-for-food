@@ -43,7 +43,7 @@ def load_documents():
         
         _documents_cache = {
             'health_pdf': read_file_bytes(os.path.join(docs_dir, '2024-12-16-healthyclaim-factsheet-scb-0900.pdf')),
-            'health_txt': read_file_bytes(os.path.join(docs_dir, 'Dietary_Guidelines_for_Americans-2020-2025.txt')),
+            'dietary_guidelines_txt': read_file_bytes(os.path.join(docs_dir, 'Dietary_Guidelines_for_Americans-2020-2025.txt')),
             'scogs_definitions': read_file_bytes(os.path.join(docs_dir, 'SCOGS-definitions.csv')),
             'scogs_data': read_file_bytes(os.path.join(docs_dir, 'SCOGS.csv')),
             'fda_news': read_file_bytes(os.path.join(docs_dir, 'FDA News Release.txt'))
@@ -177,7 +177,7 @@ def get_food_recommendations(request):
         
         # Create content parts from documents
         pdf_file_part = types.Part.from_bytes(data=documents['health_pdf'], mime_type='application/pdf')
-        txt_file_part = types.Part.from_bytes(data=documents['health_txt'], mime_type='text/plain')
+        dietary_guidelines_part = types.Part.from_bytes(data=documents['dietary_guidelines_txt'], mime_type='text/plain')
         scogs_definitions_part = types.Part.from_bytes(data=documents['scogs_definitions'], mime_type='text/csv')
         scogs_data_part = types.Part.from_bytes(data=documents['scogs_data'], mime_type='text/csv')
         fda_news_release_part = types.Part.from_bytes(data=documents['fda_news'], mime_type='text/plain')
@@ -185,7 +185,7 @@ def get_food_recommendations(request):
         contents = [
             types.Content(
                 role="user",
-                parts=[prompt_part, pdf_file_part, txt_file_part, scogs_definitions_part, scogs_data_part, fda_news_release_part],
+                parts=[prompt_part, pdf_file_part, dietary_guidelines_part, scogs_definitions_part, scogs_data_part, fda_news_release_part],
             ),
         ]
         
