@@ -44,13 +44,12 @@ export class NutritionWizard {
         // Initialize audio context
         this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
         
+        // Ensure initial fade-in state
+        const contentContainer = document.getElementById('wizardStepContent');
+        contentContainer.classList.add('fade-in');
+        
         // Show welcome step
         this.showStep(0);
-        
-        // Play greeting audio after a short delay
-        setTimeout(() => {
-            this.playGreetingAudio();
-        }, 1000);
     }
     
     createWizardHTML() {
@@ -123,14 +122,23 @@ export class NutritionWizard {
         progressFill.style.width = `${progress}%`;
     }
     
-    async playGreetingAudio() {
+    async playStepAudio(stepIndex) {
         try {
-            // Load audio file
-            const response = await fetch('/audio1.wav');
+            // Load audio file for the specific step
+            const response = await fetch(`/audio/audio${stepIndex}.wav`);
             const arrayBuffer = await response.arrayBuffer();
             const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
             
-            // Create audio source
+            // Stop any currently playing audio
+            if (this.audioSource && this.audioSource.stop) {
+                try {
+                    this.audioSource.stop();
+                } catch (e) {
+                    // Ignore if already stopped
+                }
+            }
+            
+            // Create new audio source
             this.audioSource = this.audioContext.createBufferSource();
             this.audioSource.buffer = audioBuffer;
             
@@ -142,23 +150,8 @@ export class NutritionWizard {
             
             // Play audio
             this.audioSource.start();
-            
-            // Show "Get Started" button after audio plays
-            this.audioSource.onended = () => {
-                const getStartedBtn = document.getElementById('wizardGetStarted');
-                if (getStartedBtn) {
-                    getStartedBtn.style.opacity = '1';
-                    getStartedBtn.style.pointerEvents = 'auto';
-                }
-            };
         } catch (error) {
-            console.error('Error playing greeting audio:', error);
-            // Show button anyway if audio fails
-            const getStartedBtn = document.getElementById('wizardGetStarted');
-            if (getStartedBtn) {
-                getStartedBtn.style.opacity = '1';
-                getStartedBtn.style.pointerEvents = 'auto';
-            }
+            console.error('Error playing step audio:', error);
         }
     }
     
@@ -167,16 +160,21 @@ export class NutritionWizard {
         const step = this.steps[stepIndex];
         const contentContainer = document.getElementById('wizardStepContent');
         
-        // Update navigation buttons
-        const prevBtn = document.getElementById('wizardPrevBtn');
-        const nextBtn = document.getElementById('wizardNextBtn');
-        const skipBtn = document.getElementById('wizardSkipBtn');
+        // Add fade-out class to current content
+        contentContainer.classList.add('fade-out');
         
-        prevBtn.style.display = stepIndex > 0 ? 'block' : 'none';
-        skipBtn.style.display = stepIndex === 0 ? 'block' : 'none';
-        
-        // Generate step content
-        let content = '';
+        // Wait for fade-out to complete before updating content
+        setTimeout(() => {
+            // Update navigation buttons
+            const prevBtn = document.getElementById('wizardPrevBtn');
+            const nextBtn = document.getElementById('wizardNextBtn');
+            const skipBtn = document.getElementById('wizardSkipBtn');
+            
+            prevBtn.style.display = stepIndex > 0 ? 'block' : 'none';
+            skipBtn.style.display = stepIndex === 0 ? 'block' : 'none';
+            
+            // Generate step content
+            let content = '';
         
         switch (step.id) {
             case 'welcome':
@@ -184,7 +182,7 @@ export class NutritionWizard {
                     <div class="nutrition-wizard-welcome">
                         <h1>Welcome to Your Nutrition Assistant</h1>
                         <p>I'll help you create a personalized nutrition plan by learning about your health goals and preferences.</p>
-                        <button id="wizardGetStarted" class="nutrition-wizard-btn nutrition-wizard-btn-large" onclick="window.nutritionWizard.nextStep()" style="opacity: 0; pointer-events: none; transition: opacity 0.5s ease;">
+                        <button id="wizardGetStarted" class="nutrition-wizard-btn nutrition-wizard-btn-large" onclick="window.nutritionWizard.nextStep()">
                             Get Started
                         </button>
                     </div>
@@ -212,6 +210,7 @@ export class NutritionWizard {
                         </div>
                     </div>
                 `;
+                nextBtn.style.display = 'block'; // Ensure next button is visible
                 nextBtn.textContent = 'Next';
                 nextBtn.disabled = !this.profileData.gender;
                 break;
@@ -226,6 +225,7 @@ export class NutritionWizard {
                         </div>
                     </div>
                 `;
+                nextBtn.style.display = 'block'; // Ensure next button is visible
                 nextBtn.disabled = !this.profileData.age;
                 break;
                 
@@ -245,6 +245,7 @@ export class NutritionWizard {
                         </div>
                     </div>
                 `;
+                nextBtn.style.display = 'block'; // Ensure next button is visible
                 nextBtn.disabled = !this.profileData.heightFeet;
                 break;
                 
@@ -258,6 +259,7 @@ export class NutritionWizard {
                         </div>
                     </div>
                 `;
+                nextBtn.style.display = 'block'; // Ensure next button is visible
                 nextBtn.disabled = !this.profileData.weight;
                 break;
                 
@@ -268,6 +270,7 @@ export class NutritionWizard {
                         <textarea id="wizardGoals" rows="4" placeholder="e.g., Lose weight, gain muscle, eat healthier, manage diabetes..." onchange="window.nutritionWizard.updateGoals(this.value)">${this.profileData.goals || ''}</textarea>
                     </div>
                 `;
+                nextBtn.style.display = 'block'; // Ensure next button is visible
                 nextBtn.disabled = !this.profileData.goals;
                 break;
                 
@@ -279,6 +282,7 @@ export class NutritionWizard {
                         <p class="nutrition-wizard-hint">Leave blank if you have no restrictions</p>
                     </div>
                 `;
+                nextBtn.style.display = 'block'; // Ensure next button is visible
                 break;
                 
             case 'preferences':
@@ -288,6 +292,7 @@ export class NutritionWizard {
                         <textarea id="wizardPreferences" rows="4" placeholder="e.g., Love vegetables, prefer spicy food, don't like seafood..." onchange="window.nutritionWizard.updatePreferences(this.value)">${this.profileData.preferences || ''}</textarea>
                     </div>
                 `;
+                nextBtn.style.display = 'block'; // Ensure next button is visible
                 break;
                 
             case 'summary':
@@ -324,14 +329,23 @@ export class NutritionWizard {
                         <p class="nutrition-wizard-confirm">Is this information correct?</p>
                     </div>
                 `;
+                nextBtn.style.display = 'block'; // Ensure next button is visible
                 nextBtn.textContent = 'Complete Setup';
                 break;
-        }
-        
-        contentContainer.innerHTML = content;
-        
-        // Update progress
-        this.updateProgressIndicator();
+            }
+            
+            contentContainer.innerHTML = content;
+            
+            // Remove fade-out and add fade-in class
+            contentContainer.classList.remove('fade-out');
+            contentContainer.classList.add('fade-in');
+            
+            // Update progress
+            this.updateProgressIndicator();
+            
+            // Play audio for the current step
+            this.playStepAudio(stepIndex);
+        }, 300); // Match CSS transition duration
     }
     
     // Navigation methods

@@ -2156,6 +2156,16 @@ button.control-button {
     justify-content: center;
     text-align: center;
     color: #333;
+    transition: opacity 0.3s ease-in-out;
+}
+
+/* Fade transition classes for wizard steps */
+.nutrition-wizard-step.fade-out {
+    opacity: 0;
+}
+
+.nutrition-wizard-step.fade-in {
+    opacity: 1;
 }
 
 /* Welcome step */
