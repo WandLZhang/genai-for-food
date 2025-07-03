@@ -351,6 +351,34 @@ export class NutritionWizard {
     
     skip() {
         if (confirm('Are you sure you want to skip the setup? You can update your profile later.')) {
+            // Load default profile when skipping
+            const defaultProfile = {
+                gender: 'Female',
+                age: 35,
+                heightFeet: 5,
+                heightInches: 5,
+                weight: 140,
+                goals: 'Maintain my current weight and eat healthier in general',
+                restrictions: 'Nut allergy!!!',
+                preferences: 'Balance of different vegetables. Like meats, especially red meat'
+            };
+            
+            // Save default profile
+            localStorage.setItem('userProfile', JSON.stringify(defaultProfile));
+            
+            // Update userSettings and userPreferences for API calls
+            const userSettings = `I am ${defaultProfile.gender.toLowerCase()}, ${defaultProfile.age} years old. ${defaultProfile.heightFeet}'${defaultProfile.heightInches} and ${defaultProfile.weight} lbs. Goal is to ${defaultProfile.goals.toLowerCase()}`;
+            const userPreferences = `${defaultProfile.restrictions} ${defaultProfile.preferences}`;
+            
+            localStorage.setItem('userSettings', userSettings);
+            localStorage.setItem('userPreferences', userPreferences);
+            
+            // Update profile display
+            if (window.updateProfileDisplay) {
+                window.updateProfileDisplay();
+            }
+            
+            // Close wizard
             this.closeWizard();
         }
     }

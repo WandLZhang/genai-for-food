@@ -3,6 +3,9 @@
 let nutritionMediaStream = null;
 let nutritionCapturedImage = null;
 
+// Clear nutrition setup flag on page load to always show wizard
+localStorage.removeItem('nutritionSetupComplete');
+
 // Initialize food history with example items - always reset to defaults on page refresh
 let foodHistory = [
     { 
@@ -70,12 +73,8 @@ export async function initNutritionCamera() {
             );
             window.nutritionWizard.init();
             
-            // Mark setup as complete after wizard closes
-            const originalClose = window.nutritionWizard.closeWizard;
-            window.nutritionWizard.closeWizard = function() {
-                localStorage.setItem('nutritionSetupComplete', 'true');
-                originalClose.call(this);
-            };
+            // Don't permanently mark setup as complete - wizard will show on refresh
+            // Just use the original close function without setting the flag
         });
     }
     

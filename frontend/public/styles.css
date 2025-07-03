@@ -964,7 +964,7 @@ button.control-button {
 }
 
 .nutrition-profile-box {
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(0, 0, 0, 0.8);
   border-radius: 12px;
   padding: 12px 16px;
   display: flex;
@@ -973,14 +973,14 @@ button.control-button {
   cursor: pointer;
   transition: all 0.3s ease;
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .nutrition-profile-box:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
-  background: rgba(255, 255, 255, 1);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+  background: rgba(0, 0, 0, 0.9);
 }
 
 .nutrition-profile-icon {
@@ -1001,13 +1001,13 @@ button.control-button {
 
 .nutrition-profile-name {
   font-weight: 600;
-  color: #333;
+  color: #fff;
   font-size: 16px;
 }
 
 .nutrition-profile-details {
   font-size: 14px;
-  color: #666;
+  color: rgba(255, 255, 255, 0.8);
 }
 
 /* Profile Modal Styles */
@@ -1189,6 +1189,7 @@ button.control-button {
   .nutrition-profile-box {
     padding: 10px 14px;
     order: 2;
+    background: rgba(0, 0, 0, 0.8);
   }
   
   .nutrition-profile-modules-container .nutrition-modules-panel {
@@ -1473,7 +1474,7 @@ button.control-button {
   color: white;
   font-size: 14px;
   text-align: center;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.8);
   padding: 8px 16px;
   border-radius: 20px;
   backdrop-filter: blur(10px);
@@ -1493,16 +1494,16 @@ button.control-button {
 }
 
 .nutrition-module-btn {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.7);
   border: none;
   border-radius: 12px;
   padding: 12px 18px;
   font-weight: 600;
-  color: #333;
+  color: #fff;
   cursor: pointer;
   transition: all 0.3s ease;
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   min-width: 180px;
   text-align: left;
   font-size: 14px;
@@ -1510,14 +1511,15 @@ button.control-button {
 }
 
 .nutrition-module-btn:hover {
-  background: rgba(255, 255, 255, 1);
+  background: rgba(0, 0, 0, 0.85);
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
 }
 
 .nutrition-module-btn.active {
-  background: rgba(66, 66, 66, 0.95);
+  background: rgba(102, 126, 234, 0.85);
   color: white;
+  border: 1px solid rgba(102, 126, 234, 0.5);
 }
 
 .nutrition-content-panel {
@@ -2056,7 +2058,7 @@ button.control-button {
     left: 0;
     right: 0;
     bottom: 0;
-    background: #0a0a0a;
+    background: linear-gradient(135deg, #f5f3ff 0%, #e9d5ff 100%);
     z-index: 10000;
     display: flex;
     align-items: center;
@@ -2071,6 +2073,8 @@ button.control-button {
     right: 0;
     bottom: 0;
     z-index: 1;
+    pointer-events: none;
+    opacity: 0.3; /* Make it subtle so text is readable */
 }
 
 .nutrition-wizard-content {
@@ -2117,12 +2121,14 @@ button.control-button {
     width: 32px;
     height: 32px;
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.1);
+    background: transparent;
+    border: 2px solid rgba(102, 126, 234, 0.5);
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 12px;
-    color: rgba(255, 255, 255, 0.5);
+    color: #667eea;
+    font-weight: 700;
     transition: all 0.3s ease;
 }
 
@@ -2149,7 +2155,7 @@ button.control-button {
     align-items: center;
     justify-content: center;
     text-align: center;
-    color: white;
+    color: #333;
 }
 
 /* Welcome step */
@@ -2165,9 +2171,10 @@ button.control-button {
 
 .nutrition-wizard-welcome p {
     font-size: 1.2rem;
-    color: rgba(255, 255, 255, 0.8);
+    color: #555;
     margin-bottom: 40px;
     line-height: 1.6;
+    font-weight: 500;
 }
 
 /* Form elements */
@@ -2175,7 +2182,7 @@ button.control-button {
     font-size: 1.8rem;
     font-weight: 600;
     margin-bottom: 30px;
-    color: white;
+    color: #333;
 }
 
 .nutrition-wizard-options {
@@ -2186,8 +2193,8 @@ button.control-button {
 }
 
 .nutrition-wizard-option {
-    background: rgba(255, 255, 255, 0.05);
-    border: 2px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.8);
+    border: 2px solid rgba(102, 126, 234, 0.3);
     border-radius: 12px;
     padding: 20px 30px;
     cursor: pointer;
@@ -2196,13 +2203,14 @@ button.control-button {
     flex-direction: column;
     align-items: center;
     gap: 10px;
-    color: white;
+    color: #333;
     min-width: 120px;
 }
 
 .nutrition-wizard-option:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.95);
     border-color: #667eea;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
 }
 
 .nutrition-wizard-option.selected {
@@ -2230,12 +2238,12 @@ button.control-button {
 }
 
 .nutrition-wizard-input-group input {
-    background: rgba(255, 255, 255, 0.05);
-    border: 2px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.9);
+    border: 2px solid rgba(102, 126, 234, 0.3);
     border-radius: 8px;
     padding: 12px 20px;
     font-size: 18px;
-    color: white;
+    color: #333;
     text-align: center;
     width: 200px;
     transition: all 0.3s ease;
@@ -2248,8 +2256,9 @@ button.control-button {
 }
 
 .nutrition-wizard-input-group span {
-    color: rgba(255, 255, 255, 0.6);
+    color: #666;
     font-size: 16px;
+    font-weight: 500;
 }
 
 .nutrition-wizard-input-row {
@@ -2269,12 +2278,12 @@ button.control-button {
 /* Textarea */
 .nutrition-wizard-form textarea {
     width: 100%;
-    background: rgba(255, 255, 255, 0.05);
-    border: 2px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.9);
+    border: 2px solid rgba(102, 126, 234, 0.3);
     border-radius: 8px;
     padding: 12px 16px;
     font-size: 16px;
-    color: white;
+    color: #333;
     resize: vertical;
     transition: all 0.3s ease;
     font-family: var(--font);
@@ -2287,7 +2296,7 @@ button.control-button {
 }
 
 .nutrition-wizard-hint {
-    color: rgba(255, 255, 255, 0.5);
+    color: #666;
     font-size: 14px;
     margin-top: 10px;
 }
@@ -2297,21 +2306,22 @@ button.control-button {
     font-size: 1.8rem;
     font-weight: 600;
     margin-bottom: 30px;
-    color: white;
+    color: #333;
 }
 
 .nutrition-wizard-summary-content {
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.9);
     border-radius: 12px;
     padding: 30px;
     text-align: left;
     margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .nutrition-wizard-summary-item {
     padding: 10px 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    color: rgba(255, 255, 255, 0.9);
+    border-bottom: 1px solid rgba(102, 126, 234, 0.2);
+    color: #555;
 }
 
 .nutrition-wizard-summary-item:last-child {
@@ -2324,7 +2334,7 @@ button.control-button {
 }
 
 .nutrition-wizard-confirm {
-    color: rgba(255, 255, 255, 0.8);
+    color: #555;
     font-size: 16px;
 }
 
@@ -2363,25 +2373,30 @@ button.control-button {
 }
 
 .nutrition-wizard-btn-secondary {
-    background: rgba(255, 255, 255, 0.1);
-    color: white;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.8);
+    color: #667eea;
+    border: 1px solid rgba(102, 126, 234, 0.3);
 }
 
 .nutrition-wizard-btn-secondary:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.95);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
 }
 
 .nutrition-wizard-btn-skip {
     background: transparent;
-    color: rgba(255, 255, 255, 0.5);
+    color: #667eea;
     border: none;
-    text-decoration: underline;
+    text-decoration: none;
     padding: 12px 20px;
+    font-weight: 600;
+    opacity: 0.7;
+    transition: all 0.2s ease;
 }
 
 .nutrition-wizard-btn-skip:hover {
-    color: rgba(255, 255, 255, 0.8);
+    color: white;
+    opacity: 1;
 }
 
 .nutrition-wizard-btn-large {
