@@ -53,38 +53,27 @@ setAudioManager(audioManager);
 
 // Initialize user profile
 function initializeUserProfile() {
-    // Check if profile exists, if not set the default
-    const existingProfile = localStorage.getItem('userProfile');
-    if (!existingProfile) {
-        const defaultProfile = {
-            gender: 'Female',
-            age: 35,
-            heightFeet: 5,
-            heightInches: 5,
-            weight: 140,
-            goals: 'Maintain my current weight and eat healthier in general',
-            restrictions: 'Nut allergy!!!',
-            preferences: 'Balance of different vegetables. Like meats, especially red meat'
-        };
-        
-        // Save profile
-        localStorage.setItem('userProfile', JSON.stringify(defaultProfile));
-        
-        // Set userSettings and userPreferences for API calls
-        const userSettings = `I am ${defaultProfile.gender.toLowerCase()}, ${defaultProfile.age} years old. ${defaultProfile.heightFeet}'${defaultProfile.heightInches} and ${defaultProfile.weight} lbs. Goal is to ${defaultProfile.goals.toLowerCase()}`;
-        const userPreferences = `${defaultProfile.restrictions} ${defaultProfile.preferences}`;
-        
-        localStorage.setItem('userSettings', userSettings);
-        localStorage.setItem('userPreferences', userPreferences);
-    } else {
-        // Ensure userSettings and userPreferences are in sync with profile
-        const profile = JSON.parse(existingProfile);
-        const userSettings = `I am ${profile.gender.toLowerCase()}, ${profile.age} years old. ${profile.heightFeet}'${profile.heightInches} and ${profile.weight} lbs. Goal is to ${profile.goals.toLowerCase()}`;
-        const userPreferences = `${profile.restrictions} ${profile.preferences}`;
-        
-        localStorage.setItem('userSettings', userSettings);
-        localStorage.setItem('userPreferences', userPreferences);
-    }
+    // Always reset to default profile on page refresh
+    const defaultProfile = {
+        gender: 'Female',
+        age: 35,
+        heightFeet: 5,
+        heightInches: 5,
+        weight: 140,
+        goals: 'Maintain my current weight and eat healthier in general',
+        restrictions: 'Nut allergy!!!',
+        preferences: 'Balance of different vegetables. Like meats, especially red meat'
+    };
+    
+    // Save profile
+    localStorage.setItem('userProfile', JSON.stringify(defaultProfile));
+    
+    // Set userSettings and userPreferences for API calls
+    const userSettings = `I am ${defaultProfile.gender.toLowerCase()}, ${defaultProfile.age} years old. ${defaultProfile.heightFeet}'${defaultProfile.heightInches} and ${defaultProfile.weight} lbs. Goal is to ${defaultProfile.goals.toLowerCase()}`;
+    const userPreferences = `${defaultProfile.restrictions} ${defaultProfile.preferences}`;
+    
+    localStorage.setItem('userSettings', userSettings);
+    localStorage.setItem('userPreferences', userPreferences);
 }
 
 // Initialize profile on app load

@@ -3,8 +3,8 @@
 let nutritionMediaStream = null;
 let nutritionCapturedImage = null;
 
-// Initialize food history with example items like the original app
-let foodHistory = JSON.parse(localStorage.getItem('foodHistory') || JSON.stringify([
+// Initialize food history with example items - always reset to defaults on page refresh
+let foodHistory = [
     { 
         text: 'Large pepperoni pizza with soda', 
         colorClass: 'bg-red-200 text-red-800',
@@ -43,7 +43,10 @@ let foodHistory = JSON.parse(localStorage.getItem('foodHistory') || JSON.stringi
         ],
         date: new Date('2024-06-09T07:38:00').toISOString()
     }
-]));
+];
+
+// Always save the default food history to localStorage
+localStorage.setItem('foodHistory', JSON.stringify(foodHistory));
 
 let chatMessages = [
     { type: 'bot', text: "Hi! I'm here to help verify food claims and answer nutrition questions. What would you like to know?" }
