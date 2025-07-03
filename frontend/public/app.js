@@ -51,33 +51,8 @@ const audioManager = new AudioManager();
 // Initialize nutrition module with audio manager
 setAudioManager(audioManager);
 
-// Initialize user profile
-function initializeUserProfile() {
-    // Always reset to default profile on page refresh
-    const defaultProfile = {
-        gender: 'Female',
-        age: 35,
-        heightFeet: 5,
-        heightInches: 5,
-        weight: 140,
-        goals: 'Maintain my current weight and eat healthier in general',
-        restrictions: 'Nut allergy!!!',
-        preferences: 'Balance of different vegetables. Like meats, especially red meat'
-    };
-    
-    // Save profile
-    localStorage.setItem('userProfile', JSON.stringify(defaultProfile));
-    
-    // Set userSettings and userPreferences for API calls
-    const userSettings = `I am ${defaultProfile.gender.toLowerCase()}, ${defaultProfile.age} years old. ${defaultProfile.heightFeet}'${defaultProfile.heightInches} and ${defaultProfile.weight} lbs. Goal is to ${defaultProfile.goals.toLowerCase()}`;
-    const userPreferences = `${defaultProfile.restrictions} ${defaultProfile.preferences}`;
-    
-    localStorage.setItem('userSettings', userSettings);
-    localStorage.setItem('userPreferences', userPreferences);
-}
-
-// Initialize profile on app load
-initializeUserProfile();
+// Note: User profile initialization is now handled by the Nutrition Wizard
+// which launches automatically on first use of the Nutrition Assistant
 
 // State
 let isMenuOpen = false;

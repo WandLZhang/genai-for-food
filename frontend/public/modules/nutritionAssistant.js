@@ -56,6 +56,29 @@ let chatMessages = [
 export async function initNutritionCamera() {
     const nutritionVideo = document.getElementById('nutritionVideo');
     
+    // Check if user has completed profile setup
+    const userProfile = localStorage.getItem('userProfile');
+    const hasCompletedSetup = localStorage.getItem('nutritionSetupComplete');
+    
+    // Launch wizard if profile is not set up or if it's the default profile
+    if (!userProfile || !hasCompletedSetup) {
+        // Import and launch wizard
+        import('./nutritionWizard.js').then(({ NutritionWizard }) => {
+            window.nutritionWizard = new NutritionWizard(
+                document.getElementById('nutritionView'),
+                nutritionAudioManager
+            );
+            window.nutritionWizard.init();
+            
+            // Mark setup as complete after wizard closes
+            const originalClose = window.nutritionWizard.closeWizard;
+            window.nutritionWizard.closeWizard = function() {
+                localStorage.setItem('nutritionSetupComplete', 'true');
+                originalClose.call(this);
+            };
+        });
+    }
+    
     // Update profile display
     updateProfileDisplay();
     

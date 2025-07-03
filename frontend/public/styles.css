@@ -2049,6 +2049,388 @@ button.control-button {
     }
 }
 
+/* Nutrition Wizard Styles */
+.nutrition-wizard-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: #0a0a0a;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.3s ease;
+}
+
+.nutrition-wizard-3d-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1;
+}
+
+.nutrition-wizard-content {
+    position: relative;
+    z-index: 10;
+    max-width: 600px;
+    width: 90%;
+    padding: 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    pointer-events: auto;
+}
+
+/* Progress indicator */
+.nutrition-wizard-progress {
+    width: 100%;
+    margin-bottom: 40px;
+}
+
+.nutrition-wizard-progress-bar {
+    width: 100%;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    margin-bottom: 20px;
+    overflow: hidden;
+}
+
+.nutrition-wizard-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+}
+
+.nutrition-wizard-progress-steps {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.nutrition-wizard-progress-step {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
+    transition: all 0.3s ease;
+}
+
+.nutrition-wizard-progress-step.active {
+    background: #667eea;
+    color: white;
+    transform: scale(1.2);
+}
+
+.nutrition-wizard-progress-step.completed {
+    background: #764ba2;
+    color: white;
+}
+
+.nutrition-wizard-progress-step span {
+    font-weight: 600;
+}
+
+/* Step content */
+.nutrition-wizard-step {
+    width: 100%;
+    min-height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: white;
+}
+
+/* Welcome step */
+.nutrition-wizard-welcome h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 20px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.nutrition-wizard-welcome p {
+    font-size: 1.2rem;
+    color: rgba(255, 255, 255, 0.8);
+    margin-bottom: 40px;
+    line-height: 1.6;
+}
+
+/* Form elements */
+.nutrition-wizard-form h2 {
+    font-size: 1.8rem;
+    font-weight: 600;
+    margin-bottom: 30px;
+    color: white;
+}
+
+.nutrition-wizard-options {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.nutrition-wizard-option {
+    background: rgba(255, 255, 255, 0.05);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 20px 30px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    color: white;
+    min-width: 120px;
+}
+
+.nutrition-wizard-option:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: #667eea;
+}
+
+.nutrition-wizard-option.selected {
+    background: rgba(102, 126, 234, 0.2);
+    border-color: #667eea;
+}
+
+.nutrition-wizard-option .material-icons {
+    font-size: 40px;
+    color: #667eea;
+}
+
+.nutrition-wizard-option span:last-child {
+    font-size: 16px;
+    font-weight: 500;
+}
+
+/* Input groups */
+.nutrition-wizard-input-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.nutrition-wizard-input-group input {
+    background: rgba(255, 255, 255, 0.05);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 12px 20px;
+    font-size: 18px;
+    color: white;
+    text-align: center;
+    width: 200px;
+    transition: all 0.3s ease;
+}
+
+.nutrition-wizard-input-group input:focus {
+    outline: none;
+    border-color: #667eea;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.nutrition-wizard-input-group span {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 16px;
+}
+
+.nutrition-wizard-input-row {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+}
+
+.nutrition-wizard-input-row .nutrition-wizard-input-group {
+    margin-bottom: 0;
+}
+
+.nutrition-wizard-input-row input {
+    width: 100px;
+}
+
+/* Textarea */
+.nutrition-wizard-form textarea {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.05);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 16px;
+    color: white;
+    resize: vertical;
+    transition: all 0.3s ease;
+    font-family: var(--font);
+}
+
+.nutrition-wizard-form textarea:focus {
+    outline: none;
+    border-color: #667eea;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.nutrition-wizard-hint {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 14px;
+    margin-top: 10px;
+}
+
+/* Summary */
+.nutrition-wizard-summary h2 {
+    font-size: 1.8rem;
+    font-weight: 600;
+    margin-bottom: 30px;
+    color: white;
+}
+
+.nutrition-wizard-summary-content {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 30px;
+    text-align: left;
+    margin-bottom: 20px;
+}
+
+.nutrition-wizard-summary-item {
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.nutrition-wizard-summary-item:last-child {
+    border-bottom: none;
+}
+
+.nutrition-wizard-summary-item strong {
+    color: #667eea;
+    margin-right: 10px;
+}
+
+.nutrition-wizard-confirm {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 16px;
+}
+
+/* Navigation */
+.nutrition-wizard-nav {
+    display: flex;
+    gap: 20px;
+    margin-top: 40px;
+    justify-content: center;
+}
+
+.nutrition-wizard-btn {
+    padding: 12px 32px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: none;
+    font-family: var(--font);
+}
+
+.nutrition-wizard-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.nutrition-wizard-btn-primary {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+}
+
+.nutrition-wizard-btn-primary:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+}
+
+.nutrition-wizard-btn-secondary {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.nutrition-wizard-btn-secondary:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.nutrition-wizard-btn-skip {
+    background: transparent;
+    color: rgba(255, 255, 255, 0.5);
+    border: none;
+    text-decoration: underline;
+    padding: 12px 20px;
+}
+
+.nutrition-wizard-btn-skip:hover {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.nutrition-wizard-btn-large {
+    padding: 16px 48px;
+    font-size: 18px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .nutrition-wizard-content {
+        padding: 20px;
+    }
+    
+    .nutrition-wizard-welcome h1 {
+        font-size: 2rem;
+    }
+    
+    .nutrition-wizard-welcome p {
+        font-size: 1rem;
+    }
+    
+    .nutrition-wizard-form h2 {
+        font-size: 1.5rem;
+    }
+    
+    .nutrition-wizard-options {
+        flex-direction: column;
+    }
+    
+    .nutrition-wizard-option {
+        width: 100%;
+    }
+    
+    .nutrition-wizard-input-row {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .nutrition-wizard-nav {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    
+    .nutrition-wizard-btn {
+        font-size: 14px;
+        padding: 10px 24px;
+    }
+}
+
 /* Nutrition Module Overlays (History, Recommendations, Chat) */
 .nutrition-overlay {
   position: absolute;
