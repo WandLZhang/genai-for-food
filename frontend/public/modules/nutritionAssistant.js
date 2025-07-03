@@ -53,6 +53,9 @@ let chatMessages = [
 export async function initNutritionCamera() {
     const nutritionVideo = document.getElementById('nutritionVideo');
     
+    // Update profile display
+    updateProfileDisplay();
+    
     try {
         nutritionMediaStream = await navigator.mediaDevices.getUserMedia({
             video: { facingMode: 'environment' }
@@ -237,6 +240,10 @@ export function openNutritionModule(moduleName) {
             const chatContent = document.getElementById('nutritionChatContent');
             if (chatContent) {
                 chatContent.innerHTML = generateNutritionChatContent();
+                // Set up citation listeners after initial render
+                setTimeout(() => {
+                    setupCitationListeners();
+                }, 0);
             }
             showNutritionOverlay('chat');
             break;
@@ -400,11 +407,23 @@ function generateNutritionChatContent() {
     return `
         <div class="nutrition-chat-container">
             <div class="nutrition-chat-messages" id="nutritionChatMessages">
-                ${chatMessages.map(msg => `
-                    <div class="nutrition-message ${msg.type}">
-                        ${msg.text}
-                    </div>
-                `).join('')}
+                ${chatMessages.map(msg => {
+                    // Process bot messages with citations
+                    if (msg.type === 'bot' && msg.citations && msg.citations.length > 0) {
+                        const processedText = addCitationTooltips(msg.text, msg.citations);
+                        return `
+                            <div class="nutrition-message ${msg.type} citation-text">
+                                ${processedText}
+                            </div>
+                        `;
+                    } else {
+                        return `
+                            <div class="nutrition-message ${msg.type}">
+                                ${msg.text}
+                            </div>
+                        `;
+                    }
+                }).join('')}
             </div>
             <div class="nutrition-chat-input-container">
                 <input type="text" class="nutrition-chat-input" id="nutritionChatInput" placeholder="Ask about food claims, nutrition facts..." onkeypress="window.handleNutritionChatInput(event)">
@@ -582,6 +601,13 @@ export async function handleNutritionChatInput(event) {
             // Clear input
             input.value = '';
             
+            // Add loading indicator message
+            chatMessages.push({ 
+                type: 'bot', 
+                text: '<div class="loading-indicator">Verifying claim<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span></div>',
+                isLoading: true 
+            });
+            
             // Update chat display
             updateNutritionChatDisplay();
             
@@ -591,7 +617,7 @@ export async function handleNutritionChatInput(event) {
                 const userPreferences = localStorage.getItem('userPreferences') || 'No specific dietary restrictions';
                 
                 // Send to API
-                const response = await fetch('https://us-central1-gemini-med-lit-review.cloudfunctions.net/food-chat', {
+                const response = await fetch('https://us-central1-fda-genai-for-food.cloudfunctions.net/function-food-chat', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -608,8 +634,15 @@ export async function handleNutritionChatInput(event) {
                 
                 const data = await response.json();
                 
-                // Add bot response
-                chatMessages.push({ type: 'bot', text: data.response });
+                // Remove the loading message
+                chatMessages = chatMessages.filter(msg => !msg.isLoading);
+                
+                // Add bot response with citations
+                chatMessages.push({ 
+                    type: 'bot', 
+                    text: data.response,
+                    citations: data.citations || []
+                });
                 
                 // Update chat display
                 updateNutritionChatDisplay();
@@ -620,6 +653,11 @@ export async function handleNutritionChatInput(event) {
                 }
             } catch (error) {
                 console.error('Error in chat:', error);
+                
+                // Remove the loading message
+                chatMessages = chatMessages.filter(msg => !msg.isLoading);
+                
+                // Add error message
                 chatMessages.push({ type: 'bot', text: 'Sorry, I encountered an error. Please try again.' });
                 updateNutritionChatDisplay();
             }
@@ -631,12 +669,29 @@ export async function handleNutritionChatInput(event) {
 function updateNutritionChatDisplay() {
     const chatContainer = document.getElementById('nutritionChatMessages');
     if (chatContainer) {
-        chatContainer.innerHTML = chatMessages.map(msg => `
-            <div class="nutrition-message ${msg.type}">
-                ${msg.text}
-            </div>
-        `).join('');
+        chatContainer.innerHTML = chatMessages.map(msg => {
+            // Process bot messages with citations
+            if (msg.type === 'bot' && msg.citations && msg.citations.length > 0) {
+                const processedText = addCitationTooltips(msg.text, msg.citations);
+                return `
+                    <div class="nutrition-message ${msg.type} citation-text">
+                        ${processedText}
+                    </div>
+                `;
+            } else {
+                return `
+                    <div class="nutrition-message ${msg.type}">
+                        ${msg.text}
+                    </div>
+                `;
+            }
+        }).join('');
         chatContainer.scrollTop = chatContainer.scrollHeight;
+        
+        // Set up citation listeners after DOM update
+        setTimeout(() => {
+            setupCitationListeners();
+        }, 0);
     }
 }
 
@@ -1096,6 +1151,117 @@ export async function saveFoodEntry() {
     }
 }
 
+// Get user profile data
+export function getUserProfile() {
+    const defaultProfile = {
+        gender: 'Female',
+        age: 35,
+        heightFeet: 5,
+        heightInches: 5,
+        weight: 140,
+        goals: 'Maintain my current weight and eat healthier in general',
+        restrictions: 'Nut allergy!!!',
+        preferences: 'Balance of different vegetables. Like meats, especially red meat'
+    };
+    
+    const stored = localStorage.getItem('userProfile');
+    return stored ? JSON.parse(stored) : defaultProfile;
+}
+
+// Update profile display
+export function updateProfileDisplay() {
+    const profile = getUserProfile();
+    const nameElement = document.querySelector('.nutrition-profile-name');
+    const detailsElement = document.querySelector('.nutrition-profile-details');
+    
+    if (nameElement) {
+        nameElement.textContent = `${profile.gender}, ${profile.age}`;
+    }
+    if (detailsElement) {
+        detailsElement.textContent = `${profile.heightFeet}'${profile.heightInches}", ${profile.weight} lbs`;
+    }
+}
+
+// Open profile modal
+export function openProfileModal() {
+    const modal = document.getElementById('nutritionProfileModal');
+    if (modal) {
+        modal.classList.add('active');
+        
+        // Load current profile data into form
+        const profile = getUserProfile();
+        document.getElementById('profileGender').value = profile.gender;
+        document.getElementById('profileAge').value = profile.age;
+        document.getElementById('profileHeightFeet').value = profile.heightFeet;
+        document.getElementById('profileHeightInches').value = profile.heightInches;
+        document.getElementById('profileWeight').value = profile.weight;
+        document.getElementById('profileGoals').value = profile.goals;
+        document.getElementById('profileRestrictions').value = profile.restrictions;
+        document.getElementById('profilePreferences').value = profile.preferences;
+    }
+}
+
+// Close profile modal
+export function closeProfileModal() {
+    const modal = document.getElementById('nutritionProfileModal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
+}
+
+// Save profile
+export function saveProfile() {
+    const profile = {
+        gender: document.getElementById('profileGender').value,
+        age: parseInt(document.getElementById('profileAge').value),
+        heightFeet: parseInt(document.getElementById('profileHeightFeet').value),
+        heightInches: parseInt(document.getElementById('profileHeightInches').value),
+        weight: parseInt(document.getElementById('profileWeight').value),
+        goals: document.getElementById('profileGoals').value,
+        restrictions: document.getElementById('profileRestrictions').value,
+        preferences: document.getElementById('profilePreferences').value
+    };
+    
+    // Save to localStorage
+    localStorage.setItem('userProfile', JSON.stringify(profile));
+    
+    // Update userSettings and userPreferences for API calls
+    const userSettings = `I am ${profile.gender.toLowerCase()}, ${profile.age} years old. ${profile.heightFeet}'${profile.heightInches} and ${profile.weight} lbs. Goal is to ${profile.goals.toLowerCase()}`;
+    const userPreferences = `${profile.restrictions} ${profile.preferences}`;
+    
+    localStorage.setItem('userSettings', userSettings);
+    localStorage.setItem('userPreferences', userPreferences);
+    
+    // Update display
+    updateProfileDisplay();
+    
+    // Close modal
+    closeProfileModal();
+    
+    // Show success feedback
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #4CAF50;
+        color: white;
+        padding: 16px 24px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        z-index: 10000;
+        font-weight: 500;
+        transition: opacity 0.3s ease;
+    `;
+    overlay.textContent = 'Profile saved successfully!';
+    document.body.appendChild(overlay);
+    
+    setTimeout(() => {
+        overlay.style.opacity = '0';
+        setTimeout(() => document.body.removeChild(overlay), 300);
+    }, 2000);
+}
+
 // Export functions for global access
 export function setupGlobalNutritionFunctions() {
     window.captureNutritionPhoto = captureNutritionPhoto;
@@ -1110,4 +1276,7 @@ export function setupGlobalNutritionFunctions() {
     window.openAddFoodModal = openAddFoodModal;
     window.closeAddFoodModal = closeAddFoodModal;
     window.saveFoodEntry = saveFoodEntry;
+    window.openProfileModal = openProfileModal;
+    window.closeProfileModal = closeProfileModal;
+    window.saveProfile = saveProfile;
 }

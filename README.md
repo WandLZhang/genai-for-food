@@ -427,13 +427,19 @@ cd ../..
 cd backend/function-food-chat
 gcloud functions deploy function-food-chat \
   --gen2 \
-  --runtime=python311 \
+  --runtime=python312 \
   --region=us-central1 \
   --source=. \
   --entry-point=food_chat \
   --trigger-http \
   --allow-unauthenticated \
-  --set-env-vars GEMINI_API_KEY=YOUR_GEMINI_API_KEY,RAG_BUCKET_NAME=YOUR_RAG_BUCKET_NAME
+  --timeout=600s \
+  --memory=4Gi \
+  --cpu=4 \
+  --min-instances=1 \
+  --max-instances=100 \
+  --concurrency=1 \
+  --set-env-vars PROJECT_ID=YOUR_PROJECT_ID,LOCATION=global,RAG_BUCKET_NAME=YOUR_RAG_BUCKET_NAME
 cd ../..
 ```
 

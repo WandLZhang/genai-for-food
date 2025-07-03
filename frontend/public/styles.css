@@ -951,6 +951,276 @@ button.control-button {
   }
 }
 
+/* User Profile Box and Modal Styles */
+.nutrition-profile-modules-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  position: absolute;
+  top: 20px;
+  left: 40px;
+  right: 40px;
+  z-index: 100;
+}
+
+.nutrition-profile-box {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 12px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.nutrition-profile-box:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+  background: rgba(255, 255, 255, 1);
+}
+
+.nutrition-profile-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nutrition-profile-icon .material-icons {
+  font-size: 40px;
+  color: #667eea;
+}
+
+.nutrition-profile-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.nutrition-profile-name {
+  font-weight: 600;
+  color: #333;
+  font-size: 16px;
+}
+
+.nutrition-profile-details {
+  font-size: 14px;
+  color: #666;
+}
+
+/* Profile Modal Styles */
+.nutrition-profile-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(5px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.nutrition-profile-modal.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.nutrition-profile-modal-content {
+  background: white;
+  border-radius: 16px;
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  transform: scale(0.9);
+  transition: transform 0.3s ease;
+}
+
+.nutrition-profile-modal.active .nutrition-profile-modal-content {
+  transform: scale(1);
+}
+
+.nutrition-profile-modal-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.nutrition-profile-modal-header h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.nutrition-profile-modal-close {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  border-radius: 50%;
+  width: 35px;
+  height: 35px;
+  color: white;
+  cursor: pointer;
+  font-size: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.nutrition-profile-modal-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: rotate(90deg);
+}
+
+.nutrition-profile-modal-body {
+  padding: 24px;
+  max-height: calc(90vh - 140px);
+  overflow-y: auto;
+}
+
+.nutrition-profile-form-group {
+  margin-bottom: 20px;
+}
+
+.nutrition-profile-form-group label {
+  display: block;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
+  font-size: 14px;
+  background: transparent;
+  padding: 0;
+  position: static;
+}
+
+.nutrition-profile-form-group input,
+.nutrition-profile-form-group select,
+.nutrition-profile-form-group textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: border-color 0.3s ease;
+  font-family: var(--font);
+  background: white;
+  color: #333;
+}
+
+.nutrition-profile-form-group input:focus,
+.nutrition-profile-form-group select:focus,
+.nutrition-profile-form-group textarea:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.nutrition-profile-input-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nutrition-profile-input-group input {
+  width: 60px;
+}
+
+.nutrition-profile-input-group span {
+  color: #666;
+  font-size: 14px;
+}
+
+.nutrition-profile-modal-footer {
+  background: #f8f9fa;
+  padding: 20px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.nutrition-profile-save-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 24px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+}
+
+.nutrition-profile-save-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+/* Adjust modules panel when profile box is present */
+.nutrition-profile-modules-container .nutrition-modules-panel {
+  position: static;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 0;
+  align-self: flex-start;
+}
+
+@media (max-width: 768px) {
+  .nutrition-profile-modules-container {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    top: 10px;
+    left: 10px;
+    right: 10px;
+  }
+  
+  .nutrition-profile-box {
+    padding: 10px 14px;
+    order: 2;
+  }
+  
+  .nutrition-profile-modules-container .nutrition-modules-panel {
+    order: 1;
+    margin-top: 0;
+  }
+  
+  .nutrition-profile-icon .material-icons {
+    font-size: 32px;
+  }
+  
+  .nutrition-profile-name {
+    font-size: 14px;
+  }
+  
+  .nutrition-profile-details {
+    font-size: 12px;
+  }
+  
+  .nutrition-profile-modal-content {
+    max-width: 100%;
+    width: 100%;
+    height: 100%;
+    max-height: 100%;
+    border-radius: 0;
+  }
+  
+  .nutrition-profile-modal-body {
+    padding: 16px;
+  }
+}
+
 /* Food History Color Coding Classes */
 .bg-red-200 {
   background: linear-gradient(135deg, rgba(179, 38, 30, 0.15), rgba(249, 222, 220, 0.25));
@@ -1429,6 +1699,19 @@ button.control-button {
   margin-left: auto;
 }
 
+/* Loading indicator for chat messages */
+.loading-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #666;
+  font-style: italic;
+}
+
+.loading-indicator .loading-dots {
+  margin-left: 4px;
+}
+
 .nutrition-buttons-container {
   position: absolute;
   bottom: 30px;
@@ -1625,8 +1908,9 @@ button.control-button {
   }
   
   .nutrition-modules-panel {
-    top: 10px;
-    left: 40px;
+    position: static;
+    top: auto;
+    left: auto;
   }
   
   .nutrition-module-btn {

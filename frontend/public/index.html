@@ -124,12 +124,26 @@
                     </div>
                 </div>
 
-                <!-- Module Buttons -->
-                <div class="nutrition-modules-panel">
-                    <button class="nutrition-module-btn" onclick="window.openNutritionModule('analyze')">🔍 Analyze a Food Item</button>
-                    <button class="nutrition-module-btn" onclick="window.openNutritionModule('history')">📚 Food History</button>
-                    <button class="nutrition-module-btn" onclick="window.openNutritionModule('recommendations')">⭐ Recommendations</button>
-                    <button class="nutrition-module-btn" onclick="window.openNutritionModule('chat')">💬 Food Claim Verification Chat</button>
+                <!-- Profile and Module Section -->
+                <div class="nutrition-profile-modules-container">
+                    <!-- User Profile Box -->
+                    <div class="nutrition-profile-box" onclick="window.openProfileModal()">
+                        <div class="nutrition-profile-icon">
+                            <span class="material-icons">account_circle</span>
+                        </div>
+                        <div class="nutrition-profile-info">
+                            <div class="nutrition-profile-name">Female, 35</div>
+                            <div class="nutrition-profile-details">5'5", 140 lbs</div>
+                        </div>
+                    </div>
+
+                    <!-- Module Buttons -->
+                    <div class="nutrition-modules-panel">
+                        <button class="nutrition-module-btn" onclick="window.openNutritionModule('analyze')">🔍 Analyze a Food Item</button>
+                        <button class="nutrition-module-btn" onclick="window.openNutritionModule('history')">📚 Food History</button>
+                        <button class="nutrition-module-btn" onclick="window.openNutritionModule('recommendations')">⭐ Recommendations</button>
+                        <button class="nutrition-module-btn" onclick="window.openNutritionModule('chat')">💬 Food Claim Verification Chat</button>
+                    </div>
                 </div>
 
                 <!-- Content Panel -->
@@ -192,6 +206,58 @@
                         </div>
                         <div class="nutrition-overlay-content" id="nutritionChatContent">
                             <!-- Chat content will be inserted here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Profile Edit Modal -->
+                <div class="nutrition-profile-modal" id="nutritionProfileModal">
+                    <div class="nutrition-profile-modal-content">
+                        <div class="nutrition-profile-modal-header">
+                            <h3>Edit Profile</h3>
+                            <button class="nutrition-profile-modal-close" onclick="window.closeProfileModal()">&times;</button>
+                        </div>
+                        <div class="nutrition-profile-modal-body">
+                            <div class="nutrition-profile-form-group">
+                                <label>Gender</label>
+                                <select id="profileGender">
+                                    <option value="Male">Male</option>
+                                    <option value="Female" selected>Female</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                            <div class="nutrition-profile-form-group">
+                                <label>Age</label>
+                                <input type="number" id="profileAge" value="35" min="1" max="120">
+                            </div>
+                            <div class="nutrition-profile-form-group">
+                                <label>Height</label>
+                                <div class="nutrition-profile-input-group">
+                                    <input type="number" id="profileHeightFeet" value="5" min="0" max="8">
+                                    <span>ft</span>
+                                    <input type="number" id="profileHeightInches" value="5" min="0" max="11">
+                                    <span>in</span>
+                                </div>
+                            </div>
+                            <div class="nutrition-profile-form-group">
+                                <label>Weight (lbs)</label>
+                                <input type="number" id="profileWeight" value="140" min="1" max="500">
+                            </div>
+                            <div class="nutrition-profile-form-group">
+                                <label>Goals</label>
+                                <textarea id="profileGoals" rows="2">Maintain my current weight and eat healthier in general</textarea>
+                            </div>
+                            <div class="nutrition-profile-form-group">
+                                <label>Dietary Restrictions</label>
+                                <textarea id="profileRestrictions" rows="2">Nut allergy!!!</textarea>
+                            </div>
+                            <div class="nutrition-profile-form-group">
+                                <label>Food Preferences</label>
+                                <textarea id="profilePreferences" rows="2">Balance of different vegetables. Like meats, especially red meat</textarea>
+                            </div>
+                        </div>
+                        <div class="nutrition-profile-modal-footer">
+                            <button class="nutrition-profile-save-btn" onclick="window.saveProfile()">Save Profile</button>
                         </div>
                     </div>
                 </div>
