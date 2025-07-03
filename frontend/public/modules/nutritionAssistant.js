@@ -6,6 +6,11 @@ let nutritionCapturedImage = null;
 // Clear nutrition setup flag on page load to always show wizard
 localStorage.removeItem('nutritionSetupComplete');
 
+// Clear all user profile data on page refresh
+localStorage.removeItem('userProfile');
+localStorage.removeItem('userSettings');
+localStorage.removeItem('userPreferences');
+
 // Initialize food history with example items - always reset to defaults on page refresh
 let foodHistory = [
     { 
@@ -1304,4 +1309,5 @@ export function setupGlobalNutritionFunctions() {
     window.openProfileModal = openProfileModal;
     window.closeProfileModal = closeProfileModal;
     window.saveProfile = saveProfile;
+    window.updateProfileDisplay = updateProfileDisplay;
 }
