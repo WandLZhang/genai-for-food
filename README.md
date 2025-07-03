@@ -1,5 +1,7 @@
 # GenAI for Food Deployment Guide
 
+#### Contributors: [Willis Zhang](mailto:williszhang@google.com), [Kim Zhang](mailto:kimberlyzhang@google.com), [Stone Jiang](mailto:stonejiang@google.com)
+
 This guide provides step-by-step instructions for deploying the GenAI for Food application, including the frontend, backend Cloud Functions, and necessary services on Google Cloud.
 
 ## 1. Prerequisites
