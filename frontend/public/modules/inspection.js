@@ -16,7 +16,9 @@
 
 let mediaStream = null;
 let isCameraOn = false;
-let capturedImage = null;
+let capturedMedia = null;
+let capturedMediaBlob = null; // Store the actual Blob/File object
+let mediaType = null; // 'image' or 'video'
 
 // Camera Controls
 export async function toggleCamera() {
@@ -72,38 +74,48 @@ export async function captureFrame(resizeAndCompressImage) {
     const ctx = canvas.getContext('2d');
     ctx.drawImage(camera, 0, 0);
 
-    // Get base64 image data
-    const originalImageBase64 = canvas.toDataURL('image/jpeg');
-    try {
-        // Max width/height 1280px, JPEG quality 0.75
-        const resizedImageBase64 = await resizeAndCompressImage(originalImageBase64, 1280, 1280, 0.75);
-        capturedImage = resizedImageBase64;
-        showPreview(capturedImage);
-    } catch (error) {
-        console.error("Error resizing image from camera:", error);
-        capturedImage = originalImageBase64; // Fallback to original
-        showPreview(capturedImage);
-        alert("Could not resize image. Proceeding with original if possible.");
-    }
+    // Convert canvas to blob
+    canvas.toBlob((blob) => {
+        if (blob) {
+            // Store the blob
+            capturedMediaBlob = blob;
+            mediaType = 'image';
+            
+            // Create object URL for preview
+            capturedMedia = URL.createObjectURL(blob);
+            showPreview(capturedMedia, false);
+        } else {
+            alert('Failed to capture image. Please try again.');
+        }
+    }, 'image/jpeg', 0.75);
 }
 
 // Show preview
-function showPreview(imageData) {
+function showPreview(mediaData, isVideo = false) {
     const camera = document.getElementById('camera');
     const captureButton = document.getElementById('captureButton');
     const cameraToggle = document.getElementById('cameraToggle');
     const retakeButton = document.getElementById('retakeButton');
     
-    // Show preview
-    const preview = document.createElement('img');
-    preview.src = imageData;
-    preview.style.cssText = 'position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; z-index: 10;';
-    preview.id = 'preview';
-    
     // Remove any existing preview
     const existingPreview = document.getElementById('preview');
     if (existingPreview) {
         existingPreview.remove();
+    }
+    
+    // Create preview element based on media type
+    let preview;
+    if (isVideo) {
+        preview = document.createElement('video');
+        preview.src = mediaData;
+        preview.controls = true;
+        preview.style.cssText = 'position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; z-index: 10;';
+        preview.id = 'preview';
+    } else {
+        preview = document.createElement('img');
+        preview.src = mediaData;
+        preview.style.cssText = 'position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; z-index: 10;';
+        preview.id = 'preview';
     }
     
     // Hide the camera and placeholder
@@ -142,8 +154,13 @@ export function retakePhoto() {
     cameraToggle.style.display = 'flex';
     retakeButton.style.display = 'none';
     
-    // Clear captured image and file input
-    capturedImage = null;
+    // Clear captured media and file input
+    if (capturedMedia && capturedMedia.startsWith('blob:')) {
+        URL.revokeObjectURL(capturedMedia);
+    }
+    capturedMedia = null;
+    capturedMediaBlob = null;
+    mediaType = null;
     fileInput.value = '';
     
     // Clear citation results
@@ -166,21 +183,22 @@ export function retakePhoto() {
 // Handle file upload
 export async function handleFileUpload(file, resizeAndCompressImage) {
     if (file) {
-        const reader = new FileReader();
-        reader.onload = async (loadEvent) => {
-            try {
-                // Max width/height 1280px, JPEG quality 0.75
-                const resizedImageBase64 = await resizeAndCompressImage(loadEvent.target.result, 1280, 1280, 0.75);
-                capturedImage = resizedImageBase64;
-                showPreview(capturedImage);
-            } catch (error) {
-                console.error("Error resizing image from file:", error);
-                capturedImage = loadEvent.target.result; // Fallback to original
-                showPreview(capturedImage);
-                alert("Could not resize image. Proceeding with original if possible.");
-            }
-        };
-        reader.readAsDataURL(file);
+        const fileType = file.type;
+        const isVideo = fileType.startsWith('video/');
+        const isImage = fileType.startsWith('image/');
+        
+        if (!isVideo && !isImage) {
+            alert('Please select an image or video file.');
+            return;
+        }
+        
+        // Store the original file
+        capturedMediaBlob = file;
+        mediaType = isVideo ? 'video' : 'image';
+        
+        // Create object URL for preview
+        capturedMedia = URL.createObjectURL(file);
+        showPreview(capturedMedia, isVideo);
     }
 }
 
@@ -192,8 +210,8 @@ export async function processInspection(audioManager) {
     const retakeButton = document.getElementById('retakeButton');
     const captureButton = document.getElementById('captureButton');
     
-    if (!capturedImage) {
-        alert('Please capture a photo first.');
+    if (!capturedMedia) {
+        alert('Please capture a photo or upload a file first.');
         return;
     }
 
@@ -230,15 +248,77 @@ export async function processInspection(audioManager) {
         let summary = '';
         let analysisStream = null;
 
-        // First, send POST request to get job_id
-        const postResponse = await fetch('https://us-central1-fda-genai-for-food.cloudfunctions.net/function-image-inspection', {
+        // Check if we have a blob/file to send
+        if (!capturedMediaBlob) {
+            throw new Error('No media file available to send');
+        }
+        
+        // Wait for Firebase to be ready
+        if (!window.firebaseInitialized) {
+            await new Promise((resolve) => {
+                window.addEventListener('firebaseReady', resolve, { once: true });
+            });
+        }
+        
+        // Get Firebase Storage reference
+        const { getStorage, ref, uploadBytes, getDownloadURL } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js");
+        const { initializeApp, getApps } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js");
+        
+        let app;
+        if (getApps().length === 0) {
+            const firebaseConfig = {
+                apiKey: "AIzaSyA25BAdiIYLGdRtjlFAIum92J5_aq5mqgg",
+                authDomain: "fda-genai-for-food.firebaseapp.com",
+                projectId: "fda-genai-for-food",
+                storageBucket: "fda-genai-for-food.firebasestorage.app",
+                messagingSenderId: "493357598781",
+                appId: "1:493357598781:web:69b065d2d67645625a8254"
+            };
+            app = initializeApp(firebaseConfig);
+        } else {
+            app = getApps()[0];
+        }
+        
+        const storage = getStorage(app);
+        
+        // Generate a unique job ID
+        const jobId = `inspection-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const filename = mediaType === 'video' ? 'capture.mp4' : 'capture.jpg';
+        const storagePath = `inspections/${jobId}/${filename}`;
+        
+        // Step 1: Upload to Firebase Storage
+        statusElement.innerHTML = `
+            <div class="streaming-loading">
+                <span>Uploading ${mediaType} to cloud storage...</span>
+                <div class="loading-dots">
+                    <span>.</span><span>.</span><span>.</span>
+                </div>
+            </div>
+        `;
+        
+        const storageRef = ref(storage, storagePath);
+        const uploadResult = await uploadBytes(storageRef, capturedMediaBlob);
+        console.log('File uploaded to Firebase Storage:', uploadResult.ref.fullPath);
+        
+        // Step 2: Tell backend to process from Firebase Storage
+        statusElement.innerHTML = `
+            <div class="streaming-loading">
+                <span>Starting inspection...</span>
+                <div class="loading-dots">
+                    <span>.</span><span>.</span><span>.</span>
+                </div>
+            </div>
+        `;
+        
+        const postResponse = await fetch('https://function-image-inspection-6dqq33smxa-uc.a.run.app', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                image: capturedImage,
-                background: background
+                storage_path: storagePath,
+                background: background,
+                job_id: jobId
             })
         });
         
@@ -247,16 +327,16 @@ export async function processInspection(audioManager) {
         }
 
         const postResult = await postResponse.json();
-        const jobId = postResult.job_id;
+        const receivedJobId = postResult.job_id;
         
-        if (!jobId) {
+        if (!receivedJobId) {
             throw new Error('No job ID received from server');
         }
 
-        console.log('Received job ID:', jobId);
+        console.log('Received job ID:', receivedJobId);
 
         // Now connect to stream with job_id
-        const streamUrl = `https://us-central1-fda-genai-for-food.cloudfunctions.net/function-image-inspection/stream?job_id=${jobId}`;
+        const streamUrl = `https://function-image-inspection-6dqq33smxa-uc.a.run.app/stream?job_id=${receivedJobId}`;
         analysisStream = new EventSource(streamUrl);
 
         // Handle streaming events
@@ -267,9 +347,10 @@ export async function processInspection(audioManager) {
                 
                 switch(data.type) {
                     case 'ANALYSIS_STARTED':
+                        const contentType = data.data?.content_type || 'media';
                         statusElement.innerHTML = `
                             <div class="streaming-loading">
-                                <span>Image inspection process initiated...</span>
+                                <span>${contentType.charAt(0).toUpperCase() + contentType.slice(1)} inspection process initiated...</span>
                                 <div class="loading-dots">
                                     <span>.</span><span>.</span><span>.</span>
                                 </div>
@@ -342,6 +423,39 @@ export async function processInspection(audioManager) {
                         verifiedCitations.push(data.data.processed_citation);
                         // Update the verified citations display
                         displayVerifiedCitations(verifiedCitations, verifiedCitationsElement);
+                        break;
+                        
+                    case 'VIDEO_ANALYSIS_START':
+                        statusElement.innerHTML = `
+                            <div class="streaming-loading">
+                                <span>${data.content}</span>
+                                <div class="loading-dots">
+                                    <span>.</span><span>.</span><span>.</span>
+                                </div>
+                            </div>
+                        `;
+                        break;
+                        
+                    case 'TIMESTAMPS_IDENTIFIED':
+                        statusElement.innerHTML = `
+                            <div class="streaming-loading">
+                                <span>${data.content}</span>
+                                <div class="loading-dots">
+                                    <span>.</span><span>.</span><span>.</span>
+                                </div>
+                            </div>
+                        `;
+                        break;
+                        
+                    case 'EXTRACTING_FRAME':
+                        statusElement.innerHTML = `
+                            <div class="streaming-loading">
+                                <span>${data.content}</span>
+                                <div class="loading-dots">
+                                    <span>.</span><span>.</span><span>.</span>
+                                </div>
+                            </div>
+                        `;
                         break;
                         
                     case 'SUMMARY_GENERATION_START':
@@ -463,13 +577,56 @@ export async function processInspection(audioManager) {
 
 // Display verified citations as they come in
 function displayVerifiedCitations(citations, container) {
-    container.innerHTML = '';
-    citations.forEach(citation => {
+    // For video processing, we want to append citations as they come in
+    // Check if this is a new analysis (container is empty) or continuing
+    const isNewAnalysis = container.children.length === 0;
+    
+    // If it's a new analysis, clear the container
+    if (isNewAnalysis) {
+        container.innerHTML = '';
+    }
+    
+    // For videos, we only want to add the latest citation (last in array)
+    // For images, we redraw all citations
+    let citationsToDisplay = [];
+    
+    // Check if we're processing video frames (citations have video_timestamp)
+    const isVideoProcessing = citations.some(c => c.video_timestamp !== undefined);
+    
+    if (isVideoProcessing && !isNewAnalysis) {
+        // For ongoing video processing, only add the newest citation
+        citationsToDisplay = [citations[citations.length - 1]];
+    } else {
+        // For images or initial video frame, display all citations
+        container.innerHTML = '';  // Clear and redraw all
+        citationsToDisplay = citations;
+    }
+    
+    citationsToDisplay.forEach(citation => {
         const card = document.createElement('div');
         card.className = 'citation-card';
+        
+        // Build the HTML for video-specific fields
+        let videoInfo = '';
+        if (citation.video_timestamp !== undefined) {
+            videoInfo = `
+                <div style="margin-bottom: 8px;">
+                    <strong>Timestamp:</strong> ${formatTimestamp(citation.video_timestamp)}
+                </div>
+            `;
+        }
+        if (citation.frame_description) {
+            videoInfo += `
+                <div style="margin-bottom: 8px;">
+                    <strong>Frame:</strong> ${citation.frame_description}
+                </div>
+            `;
+        }
+        
         card.innerHTML = `
             <img src="${citation.image}" alt="Citation evidence" style="width: 100%; height: auto; margin-bottom: 12px;">
             <h3><a href="${citation.url}" target="_blank">Section ${citation.section}</a></h3>
+            ${videoInfo}
             <div style="margin-bottom: 12px;">
                 <h4>Regulation:</h4>
                 <p>${citation.text}</p>
@@ -481,6 +638,13 @@ function displayVerifiedCitations(citations, container) {
         `;
         container.appendChild(card);
     });
+}
+
+// Format timestamp from seconds to MM:SS format
+function formatTimestamp(seconds) {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = Math.floor(seconds % 60);
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
 }
 
 // Display Citations
@@ -505,9 +669,28 @@ function displayCitations(citations, summary, audioManager) {
     citations.forEach(citation => {
         const card = document.createElement('div');
         card.className = 'citation-card';
+        
+        // Build the HTML for video-specific fields
+        let videoInfo = '';
+        if (citation.video_timestamp !== undefined) {
+            videoInfo = `
+                <div style="margin-bottom: 8px;">
+                    <strong>Timestamp:</strong> ${formatTimestamp(citation.video_timestamp)}
+                </div>
+            `;
+        }
+        if (citation.frame_description) {
+            videoInfo += `
+                <div style="margin-bottom: 8px;">
+                    <strong>Frame:</strong> ${citation.frame_description}
+                </div>
+            `;
+        }
+        
         card.innerHTML = `
             <img src="${citation.image}" alt="Citation evidence" style="width: 100%; height: auto; margin-bottom: 12px;">
             <h3><a href="${citation.url}" target="_blank">Section ${citation.section}</a></h3>
+            ${videoInfo}
             <div style="margin-bottom: 12px;">
                 <h4>Regulation:</h4>
                 <p>${citation.text}</p>
@@ -537,12 +720,18 @@ export function getCameraState() {
     return { isCameraOn, mediaStream };
 }
 
-// Get captured image
-export function getCapturedImage() {
-    return capturedImage;
+// Get captured media
+export function getCapturedMedia() {
+    return capturedMedia;
 }
 
-// Set captured image (for file upload)
-export function setCapturedImage(image) {
-    capturedImage = image;
+// Set captured media (for file upload)
+export function setCapturedMedia(media, type) {
+    capturedMedia = media;
+    mediaType = type;
+}
+
+// Get media type
+export function getMediaType() {
+    return mediaType;
 }

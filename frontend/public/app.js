@@ -24,7 +24,7 @@ import {
     processInspection,
     cleanupCamera,
     getCameraState,
-    setCapturedImage
+    setCapturedMedia
 } from './modules/inspection.js';
 import {
     initNutritionCamera,

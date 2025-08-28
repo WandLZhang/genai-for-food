@@ -154,6 +154,61 @@ The application uses Firestore for storing inspection job data and streaming upd
 
 **Note**: You only need to create the Firestore database once per project. The Cloud Functions will automatically create the necessary collections (`inspection_jobs`) when they first run.
 
+### 3.5. Configure Firebase Storage
+
+The image inspection feature uses Firebase Storage to temporarily store uploaded media files before processing. Follow these steps to set it up:
+
+1. **Enable Firebase Storage**:
+   - Go to the [Firebase Console](https://console.firebase.google.com/)
+   - Select your project
+   - In the left sidebar, click on "Storage"
+   - Click "Get started"
+   - Accept the default security rules for now (you can update them later)
+   - Select your preferred storage location (should match your Cloud Functions region, e.g., `us-central1`)
+
+2. **Configure CORS for Storage Bucket**:
+   Firebase Storage buckets need CORS configuration to allow web uploads. Create a CORS configuration file:
+
+   ```bash
+   # Create cors-config.json
+   cat > cors-config.json << 'EOF'
+   [
+     {
+       "origin": ["*"],
+       "method": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+       "maxAgeSeconds": 3600,
+       "responseHeader": ["Content-Type", "Authorization", "Content-Length", "User-Agent", "x-goog-resumable"]
+     }
+   ]
+   EOF
+   
+   # Apply CORS configuration to your storage bucket
+   gsutil cors set cors-config.json gs://YOUR_PROJECT_ID.firebasestorage.app
+   ```
+
+   Replace `YOUR_PROJECT_ID` with your actual Firebase project ID.
+
+3. **Note the Storage Bucket Name**:
+   Your Firebase Storage bucket name will be: `YOUR_PROJECT_ID.firebasestorage.app`
+   This will be used as an environment variable when deploying the image inspection function.
+
+4. **Storage Security Rules** (Optional):
+   For production, you may want to update the storage rules to be more restrictive. In the Firebase Console under Storage > Rules, you can modify the rules:
+
+   ```javascript
+   rules_version = '2';
+   service firebase.storage {
+     match /b/{bucket}/o {
+       // Allow read/write access to inspection uploads
+       match /inspections/{allPaths=**} {
+         allow read, write: if request.auth != null || request.resource.size < 100 * 1024 * 1024;
+       }
+     }
+   }
+   ```
+
+   This example allows uploads up to 100MB for the inspections path. Adjust based on your security requirements.
+
 ## 4. RAG Datastore Setup
 
 The application uses a RAG (Retrieval-Augmented Generation) datastore for providing context to the chat function. Setting up the datastore involves two steps: chunking the XML source documents and then uploading them to Google Cloud Discovery Engine.
@@ -357,6 +412,33 @@ gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
 
 This step is required to allow the service account to build and deploy Cloud Functions, access Vertex AI services, read/write to Firestore, search Discovery Engine datastores, and read RAG documents from Cloud Storage. Without these permissions, deployments will fail with build service account errors, Vertex AI access errors, Firestore permission errors, Discovery Engine search errors, or Cloud Storage access errors.
 
+### 5.2. Setup Vertex AI Service Agent (Required for Image Inspection)
+
+The image inspection function uses Vertex AI to process uploaded media files from Google Cloud Storage. You need to setup the Vertex AI service agent and grant it access to the GCS bucket:
+
+```bash
+# Install gcloud beta components if not already installed
+gcloud components install beta
+
+# Create/Ensure Vertex AI service agent exists
+gcloud beta services identity create --service=aiplatform.googleapis.com
+
+# Grant the Vertex AI service agent access to the GCS bucket
+gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
+  --member="serviceAccount:service-${PROJECT_NUMBER}@gcp-sa-aiplatform.iam.gserviceaccount.com" \
+  --role="roles/storage.objectViewer"
+
+# Also grant the service agent the necessary Vertex AI role
+gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
+  --member="serviceAccount:service-${PROJECT_NUMBER}@gcp-sa-aiplatform.iam.gserviceaccount.com" \
+  --role="roles/aiplatform.serviceAgent"
+```
+
+**Note**: This step is critical for the image inspection function to work properly. Without these permissions, you'll encounter errors when Vertex AI tries to access uploaded media files from Cloud Storage.
+
+### 5.3. Deploying Cloud Functions
+### 5.3. Deploying Cloud Functions
+
 ### 5.2. Deploying Cloud Functions
 
 Deploy each function from its respective directory.
@@ -469,6 +551,12 @@ cd ../..
 **Note:** The `RAG_BUCKET_NAME` should match the bucket name you created in section 4.4. Replace `YOUR_GEMINI_API_KEY` and `YOUR_RAG_BUCKET_NAME` with your actual values.
 
 **`function-image-inspection`**
+
+This function handles both image and video inspection capabilities:
+- **Image inspection**: Analyzes static images for FDA compliance violations
+- **Video inspection**: Processes video files to identify violations at specific timestamps
+- **Real-time streaming**: Provides progressive updates during analysis via Server-Sent Events (SSE)
+
 ```bash
 cd backend/function-image-inspection
 gcloud functions deploy function-image-inspection \
@@ -485,11 +573,23 @@ gcloud functions deploy function-image-inspection \
   --min-instances=1 \
   --max-instances=100 \
   --concurrency=1 \
-  --set-env-vars GCP_PROJECT=YOUR_PROJECT_ID,DATA_STORE_ID=YOUR_DATASTORE_ID
+  --set-env-vars GCP_PROJECT=YOUR_PROJECT_ID,DATA_STORE_ID=YOUR_DATASTORE_ID,FIREBASE_STORAGE_BUCKET=YOUR_PROJECT_ID.firebasestorage.app
 cd ../..
 ```
 
-**Note:** The `DATA_STORE_ID` should match the datastore ID you created in section 4.3 (RAG Datastore Setup). For example, if you created a datastore with ID `ecfr-title-21`, use that value here.
+**Important Notes:** 
+- The `DATA_STORE_ID` should match the datastore ID you created in section 4.3 (RAG Datastore Setup). For example, if you created a datastore with ID `ecfr-title-21`, use that value here.
+- The `FIREBASE_STORAGE_BUCKET` should be your Firebase Storage bucket name (format: `YOUR_PROJECT_ID.firebasestorage.app`). This bucket is used for processing uploaded media files from the frontend.
+- Video processing may take several minutes depending on video length (approximately 1-2 minutes per 30 seconds of video).
+- The function will stream real-time progress updates to the frontend during analysis.
+
+**After Deployment:**
+The function will be available at a URL like:
+```
+https://function-image-inspection-XXXXXXXX-uc.a.run.app
+```
+
+You'll need to update the frontend to use this URL instead of localhost. See section 6 for instructions.
 
 **`function-site-check`**
 ```bash
@@ -550,7 +650,16 @@ sed -i '' "s|https://us-central1-gemini-med-lit-review\.cloudfunctions\.net/fda-
 
 # Update inspection.js
 echo "Updating inspection.js..."
-sed -i '' "s|https://us-central1-gemini-med-lit-review\.cloudfunctions\.net/process-inspection|https://us-central1-${PROJECT_ID}.cloudfunctions.net/function-image-inspection|g" frontend/public/modules/inspection.js
+# First, get the actual Cloud Run URL for the image inspection function
+INSPECTION_URL=$(gcloud functions describe function-image-inspection --region=us-central1 --format="value(serviceConfig.uri)" 2>/dev/null)
+if [ -n "$INSPECTION_URL" ]; then
+  # Update both the POST and streaming endpoints
+  sed -i '' "s|https://function-image-inspection-[a-zA-Z0-9\-]*\.a\.run\.app|${INSPECTION_URL}|g" frontend/public/modules/inspection.js
+  sed -i '' "s|http://localhost:8080|${INSPECTION_URL}|g" frontend/public/modules/inspection.js
+else
+  echo "Warning: function-image-inspection not found. Using default pattern."
+  sed -i '' "s|https://us-central1-gemini-med-lit-review\.cloudfunctions\.net/process-inspection|https://us-central1-${PROJECT_ID}.cloudfunctions.net/function-image-inspection|g" frontend/public/modules/inspection.js
+fi
 
 # Update nutritionAssistant.js
 echo "Updating nutritionAssistant.js..."

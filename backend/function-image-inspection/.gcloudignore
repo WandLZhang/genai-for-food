@@ -8,3 +8,6 @@ env/
 venv/
 .env
 .venv
+service.yaml
+*.md
+storage_bucket

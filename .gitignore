@@ -17,6 +17,10 @@ frontend/test/template_app.txt
 **/.env.test
 !**/.env.example
 
+# Service Account Keys
+**/service-account-key.json
+**/*-sa-key.json
+
 # Logs and debug files
 *.log
 firebase-debug.log*
@@ -24,3 +28,4 @@ frontend/firebase-debug.log
 backend/function-site-check/javascript-function/.env.gemini-med-lit-review
 frontend/.firebase/hosting.cHVibGlj.cache
 fda-genai-for-food.code-workspace
+test_scripts

@@ -1,6 +1,12 @@
 functions-framework==3.*
 Flask==3.1.0
-Pillow==10.1.0
+Pillow==11.0.0
 google-cloud-discoveryengine==0.13.5
 google-genai==1.24.0
-google-cloud-firestore==2.16.0
+google-cloud-firestore>=2.21.0
+google-cloud-storage==3.3.0
+google-cloud-iam==2.19.1
+google-cloud-resource-manager==1.14.2
+opencv-python==4.9.0.80
+numpy<2
+firebase-admin==7.1.0

@@ -105,7 +105,7 @@ limitations under the License.
                         <label class="control-button upload-button" style="cursor: pointer;">
                             <span class="material-icons">upload</span>
                             <span>Upload</span>
-                            <input type="file" id="fileInput" accept="image/*" style="display: none;">
+                            <input type="file" id="fileInput" accept="image/*,video/*" style="display: none;">
                         </label>
                     </div>
                 </div>
@@ -307,6 +307,7 @@ limitations under the License.
             // Import the functions you need from the SDKs you need
             const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js");
             const { getAnalytics } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js");
+            const { getStorage } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js");
 
             // Your web app's Firebase configuration
             const firebaseConfig = {
