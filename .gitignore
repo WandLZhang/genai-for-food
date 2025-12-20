@@ -3,6 +3,18 @@ node_modules
 __pycache__
 *.pyc
 
+# Python Virtual Environments
+venv/
+env/
+ENV/
+.venv/
+virtualenv/
+venv.bak/
+.Python
+pip-wheel-metadata/
+*.egg-info/
+.eggs/
+
 # Project specific
 backend/archive
 backend/create-rag-datastore/processed_documents

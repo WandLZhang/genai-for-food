@@ -214,7 +214,11 @@ async def safety_rating_from_image_async(client, image_data, mime_type, user_set
             )
         )
         
-        return json.loads(clean_json_response(response.text))
+        logger.info(f"Raw response from model (safety rating): {response.text}")
+        cleaned_response = clean_json_response(response.text)
+        logger.info(f"Cleaned response (safety rating): {cleaned_response}")
+        
+        return json.loads(cleaned_response)
         
     except Exception as e:
         logger.error(f"Error in safety_rating_from_image_async: {e}")
